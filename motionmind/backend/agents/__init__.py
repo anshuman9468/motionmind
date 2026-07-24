@@ -31,6 +31,11 @@ from .memory_agent import (
     VectorStoreInterface,
     InMemoryMemoryStorageAdapter
 )
+from .orchestrator_agent import (
+    OrchestratorAgent,
+    PracticeSessionInput,
+    UnifiedOrchestratorResponse
+)
 
 __all__ = [
     "MotionIntelligenceAgent",
@@ -64,5 +69,8 @@ __all__ = [
     "UserContextResponse",
     "BaseMemoryStorageAdapter",
     "VectorStoreInterface",
-    "InMemoryMemoryStorageAdapter"
+    "InMemoryMemoryStorageAdapter",
+    "OrchestratorAgent",
+    "PracticeSessionInput",
+    "UnifiedOrchestratorResponse"
 ]

@@ -12,6 +12,7 @@ from agents.recommendation_agent import RecommendationAgent, RecommendationInput
 from agents.digital_twin_agent import DigitalTwinAgent, DigitalTwinProfile, SessionUpdatePayload
 from agents.progress_agent import ProgressAgent, ProgressInput, ProgressOutput
 from agents.memory_agent import MemoryAgent, SessionMemoryRecord, UserContextResponse
+from agents.orchestrator_agent import OrchestratorAgent, PracticeSessionInput, UnifiedOrchestratorResponse
 
 app = FastAPI(title="MotionMind API")
 
@@ -32,6 +33,15 @@ digital_twin_agent = DigitalTwinAgent()
 progress_agent = ProgressAgent()
 memory_agent = MemoryAgent()
 
+orchestrator_agent = OrchestratorAgent(
+    pose_agent=pose_agent,
+    coach_agent=coach_agent,
+    recommendation_agent=recommendation_agent,
+    digital_twin_agent=digital_twin_agent,
+    memory_agent=memory_agent,
+    progress_agent=progress_agent
+)
+
 @app.on_event("startup")
 def load_models():
     global evaluator
@@ -44,6 +54,18 @@ def load_models():
 @app.get("/")
 def read_root():
     return {"message": "Welcome to MotionMind API"}
+
+@app.post("/session/process", response_model=UnifiedOrchestratorResponse)
+async def process_practice_session(payload: PracticeSessionInput):
+    """
+    Master Orchestration endpoint coordinating all 7 AI agents in an end-to-end workflow:
+    Extract Pose -> ML Evaluate -> Coach -> Recommend -> Update Twin -> Save Memory -> Forecast Progress.
+    """
+    try:
+        result = await orchestrator_agent.process_session(payload)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/pose/extract", response_model=PoseAgentOutput)
 async def extract_pose_features(payload: PoseAgentInput):
