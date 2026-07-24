@@ -7,6 +7,7 @@ import os
 from ml.inference import MultiSkillEvaluator
 from agents.pose_agent import PoseAgent, PoseAgentInput, PoseAgentOutput
 from agents.coach_agent import CoachAgent, CoachAgentInput, CoachFeedbackResponse
+from agents.recommendation_agent import RecommendationAgent, RecommendationInput, RecommendationOutput
 
 app = FastAPI(title="MotionMind API")
 
@@ -22,6 +23,7 @@ app.add_middleware(
 evaluator = None
 pose_agent = PoseAgent()
 coach_agent = CoachAgent()
+recommendation_agent = RecommendationAgent()
 
 @app.on_event("startup")
 def load_models():
@@ -60,6 +62,22 @@ async def generate_coach_feedback(payload: CoachAgentInput):
             quality_score=payload.quality_score,
             mistakes=payload.mistakes,
             confidence=payload.confidence
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/recommendation/generate", response_model=RecommendationOutput)
+async def generate_recommendations(payload: RecommendationInput):
+    """
+    FastAPI endpoint for RecommendationAgent utilizing Gemini to prescribe drills,
+    dynamic warmups, static cooldowns, and difficulty progressions.
+    """
+    try:
+        result = recommendation_agent.recommend(
+            skill=payload.skill,
+            detected_mistakes=payload.detected_mistakes,
+            quality_score=payload.quality_score
         )
         return result
     except Exception as e:
