@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import shutil
 import os
+from typing import List, Optional
 
 from ml.inference import MultiSkillEvaluator
 from agents.pose_agent import PoseAgent, PoseAgentInput, PoseAgentOutput
@@ -10,6 +11,7 @@ from agents.coach_agent import CoachAgent, CoachAgentInput, CoachFeedbackRespons
 from agents.recommendation_agent import RecommendationAgent, RecommendationInput, RecommendationOutput
 from agents.digital_twin_agent import DigitalTwinAgent, DigitalTwinProfile, SessionUpdatePayload
 from agents.progress_agent import ProgressAgent, ProgressInput, ProgressOutput
+from agents.memory_agent import MemoryAgent, SessionMemoryRecord, UserContextResponse
 
 app = FastAPI(title="MotionMind API")
 
@@ -28,6 +30,7 @@ coach_agent = CoachAgent()
 recommendation_agent = RecommendationAgent()
 digital_twin_agent = DigitalTwinAgent()
 progress_agent = ProgressAgent()
+memory_agent = MemoryAgent()
 
 @app.on_event("startup")
 def load_models():
@@ -115,6 +118,46 @@ async def analyze_progress(payload: ProgressInput):
     """
     try:
         return progress_agent.analyze(sessions=payload.sessions, skill_filter=payload.skill)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/memory/session/save")
+async def save_session_memory(user_id: str, session_data: dict):
+    """
+    FastAPI endpoint for MemoryAgent to save evaluation session into shared memory.
+    """
+    try:
+        return memory_agent.save_session(user_id, session_data)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/memory/history/{user_id}")
+async def get_memory_history(user_id: str, limit: int = 10, skill: Optional[str] = None):
+    """
+    FastAPI endpoint for MemoryAgent to retrieve user session history.
+    """
+    try:
+        return memory_agent.get_history(user_id, limit=limit, skill=skill)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/memory/latest/{user_id}")
+async def get_memory_latest(user_id: str, skill: Optional[str] = None):
+    """
+    FastAPI endpoint for MemoryAgent to retrieve latest user session.
+    """
+    try:
+        return memory_agent.get_latest(user_id, skill=skill)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/memory/context/{user_id}", response_model=UserContextResponse)
+async def get_memory_user_context(user_id: str):
+    """
+    FastAPI endpoint for MemoryAgent to retrieve unified user context for all agents.
+    """
+    try:
+        return memory_agent.get_user_context(user_id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

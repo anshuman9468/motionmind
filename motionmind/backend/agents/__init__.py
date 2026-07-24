@@ -22,6 +22,15 @@ from .progress_agent import (
     ProgressAnalyticsEngine,
     ProgressPredictiveEngine
 )
+from .memory_agent import (
+    MemoryAgent,
+    UserProfile,
+    SessionMemoryRecord,
+    UserContextResponse,
+    BaseMemoryStorageAdapter,
+    VectorStoreInterface,
+    InMemoryMemoryStorageAdapter
+)
 
 __all__ = [
     "MotionIntelligenceAgent",
@@ -48,5 +57,12 @@ __all__ = [
     "ProgressOutput",
     "SessionRecord",
     "ProgressAnalyticsEngine",
-    "ProgressPredictiveEngine"
+    "ProgressPredictiveEngine",
+    "MemoryAgent",
+    "UserProfile",
+    "SessionMemoryRecord",
+    "UserContextResponse",
+    "BaseMemoryStorageAdapter",
+    "VectorStoreInterface",
+    "InMemoryMemoryStorageAdapter"
 ]
