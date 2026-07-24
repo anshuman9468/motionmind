@@ -8,6 +8,7 @@ from ml.inference import MultiSkillEvaluator
 from agents.pose_agent import PoseAgent, PoseAgentInput, PoseAgentOutput
 from agents.coach_agent import CoachAgent, CoachAgentInput, CoachFeedbackResponse
 from agents.recommendation_agent import RecommendationAgent, RecommendationInput, RecommendationOutput
+from agents.digital_twin_agent import DigitalTwinAgent, DigitalTwinProfile, SessionUpdatePayload
 
 app = FastAPI(title="MotionMind API")
 
@@ -24,6 +25,7 @@ evaluator = None
 pose_agent = PoseAgent()
 coach_agent = CoachAgent()
 recommendation_agent = RecommendationAgent()
+digital_twin_agent = DigitalTwinAgent()
 
 @app.on_event("startup")
 def load_models():
@@ -80,6 +82,26 @@ async def generate_recommendations(payload: RecommendationInput):
             quality_score=payload.quality_score
         )
         return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/digital-twin/{user_id}", response_model=DigitalTwinProfile)
+async def get_digital_twin(user_id: str):
+    """
+    FastAPI endpoint to retrieve an athlete's digital twin profile.
+    """
+    try:
+        return digital_twin_agent.get(user_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/digital-twin/update", response_model=DigitalTwinProfile)
+async def update_digital_twin(payload: SessionUpdatePayload):
+    """
+    FastAPI endpoint to update an athlete's digital twin metrics after a session.
+    """
+    try:
+        return digital_twin_agent.update(payload.user_id, payload)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

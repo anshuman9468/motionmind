@@ -5,6 +5,15 @@ from .motion_intelligence_agent import MotionIntelligenceAgent, EvaluationRespon
 from .pose_agent import PoseAgent, PoseAgentInput, PoseAgentOutput, LandmarkItem
 from .coach_agent import CoachAgent, CoachAgentInput, CoachFeedbackResponse
 from .recommendation_agent import RecommendationAgent, RecommendationInput, RecommendationOutput
+from .digital_twin_agent import (
+    DigitalTwinAgent,
+    DigitalTwinMetrics,
+    DigitalTwinProfile,
+    SessionUpdatePayload,
+    BaseStorageAdapter,
+    InMemoryStorageAdapter,
+    JSONFileStorageAdapter
+)
 
 __all__ = [
     "MotionIntelligenceAgent",
@@ -18,5 +27,12 @@ __all__ = [
     "CoachFeedbackResponse",
     "RecommendationAgent",
     "RecommendationInput",
-    "RecommendationOutput"
+    "RecommendationOutput",
+    "DigitalTwinAgent",
+    "DigitalTwinMetrics",
+    "DigitalTwinProfile",
+    "SessionUpdatePayload",
+    "BaseStorageAdapter",
+    "InMemoryStorageAdapter",
+    "JSONFileStorageAdapter"
 ]
