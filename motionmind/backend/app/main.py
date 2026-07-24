@@ -3,7 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import shutil
 import os
+
 from ml.inference import MultiSkillEvaluator
+from agents.pose_agent import PoseAgent, PoseAgentInput, PoseAgentOutput
 
 app = FastAPI(title="MotionMind API")
 
@@ -17,6 +19,7 @@ app.add_middleware(
 )
 
 evaluator = None
+pose_agent = PoseAgent()
 
 @app.on_event("startup")
 def load_models():
@@ -30,6 +33,18 @@ def load_models():
 @app.get("/")
 def read_root():
     return {"message": "Welcome to MotionMind API"}
+
+@app.post("/pose/extract", response_model=PoseAgentOutput)
+async def extract_pose_features(payload: PoseAgentInput):
+    """
+    FastAPI endpoint for PoseAgent to process MediaPipe keypoints,
+    normalize coordinates, remove noise, and return spatial feature vectors.
+    """
+    try:
+        result = pose_agent.extract(payload)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/evaluate")
 async def evaluate_video(file: UploadFile = File(...), skill: str = Form("squat")):
