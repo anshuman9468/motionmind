@@ -9,6 +9,7 @@ from agents.pose_agent import PoseAgent, PoseAgentInput, PoseAgentOutput
 from agents.coach_agent import CoachAgent, CoachAgentInput, CoachFeedbackResponse
 from agents.recommendation_agent import RecommendationAgent, RecommendationInput, RecommendationOutput
 from agents.digital_twin_agent import DigitalTwinAgent, DigitalTwinProfile, SessionUpdatePayload
+from agents.progress_agent import ProgressAgent, ProgressInput, ProgressOutput
 
 app = FastAPI(title="MotionMind API")
 
@@ -26,6 +27,7 @@ pose_agent = PoseAgent()
 coach_agent = CoachAgent()
 recommendation_agent = RecommendationAgent()
 digital_twin_agent = DigitalTwinAgent()
+progress_agent = ProgressAgent()
 
 @app.on_event("startup")
 def load_models():
@@ -102,6 +104,17 @@ async def update_digital_twin(payload: SessionUpdatePayload):
     """
     try:
         return digital_twin_agent.update(payload.user_id, payload)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/progress/analyze", response_model=ProgressOutput)
+async def analyze_progress(payload: ProgressInput):
+    """
+    FastAPI endpoint for ProgressAgent to analyze historical sessions, calculate weekly improvement,
+    predict next scores, estimate mastery timeframe, and evaluate plateau risks.
+    """
+    try:
+        return progress_agent.analyze(sessions=payload.sessions, skill_filter=payload.skill)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

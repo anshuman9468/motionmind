@@ -14,6 +14,14 @@ from .digital_twin_agent import (
     InMemoryStorageAdapter,
     JSONFileStorageAdapter
 )
+from .progress_agent import (
+    ProgressAgent,
+    ProgressInput,
+    ProgressOutput,
+    SessionRecord,
+    ProgressAnalyticsEngine,
+    ProgressPredictiveEngine
+)
 
 __all__ = [
     "MotionIntelligenceAgent",
@@ -34,5 +42,11 @@ __all__ = [
     "SessionUpdatePayload",
     "BaseStorageAdapter",
     "InMemoryStorageAdapter",
-    "JSONFileStorageAdapter"
+    "JSONFileStorageAdapter",
+    "ProgressAgent",
+    "ProgressInput",
+    "ProgressOutput",
+    "SessionRecord",
+    "ProgressAnalyticsEngine",
+    "ProgressPredictiveEngine"
 ]
