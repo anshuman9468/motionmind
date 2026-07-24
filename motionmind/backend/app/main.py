@@ -6,6 +6,7 @@ import os
 
 from ml.inference import MultiSkillEvaluator
 from agents.pose_agent import PoseAgent, PoseAgentInput, PoseAgentOutput
+from agents.coach_agent import CoachAgent, CoachAgentInput, CoachFeedbackResponse
 
 app = FastAPI(title="MotionMind API")
 
@@ -20,6 +21,7 @@ app.add_middleware(
 
 evaluator = None
 pose_agent = PoseAgent()
+coach_agent = CoachAgent()
 
 @app.on_event("startup")
 def load_models():
@@ -42,6 +44,23 @@ async def extract_pose_features(payload: PoseAgentInput):
     """
     try:
         result = pose_agent.extract(payload)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/coach/feedback", response_model=CoachFeedbackResponse)
+async def generate_coach_feedback(payload: CoachAgentInput):
+    """
+    FastAPI endpoint for CoachAgent utilizing Gemini to generate sports-science biomechanical feedback,
+    mistake explanations, corrective drills, and encouragement.
+    """
+    try:
+        result = coach_agent.analyze(
+            skill=payload.skill,
+            quality_score=payload.quality_score,
+            mistakes=payload.mistakes,
+            confidence=payload.confidence
+        )
         return result
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
