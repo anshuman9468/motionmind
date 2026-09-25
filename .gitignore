@@ -51,6 +51,3 @@ yarn-error.log*
 .vscode/
 *.swp
 *.swo
-
-# Excluded projects
-skillverse_ai/
