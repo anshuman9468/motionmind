@@ -33,6 +33,27 @@ ENV/
 .pub/
 build/
 flutter_*.png
+coverage/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+app.*.symbols
+app.*.map.json
+
+# Flutter platform build output
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
+
+# IDE and platform metadata
+*.iml
+*.ipr
+*.iws
+.atom/
+.build/
+.buildlog/
+.history
+.swiftpm/
+migrate_working_dir/
 
 # Node / Web
 node_modules/
