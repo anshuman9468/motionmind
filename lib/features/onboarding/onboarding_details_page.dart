@@ -17,7 +17,6 @@ class OnboardingDetailsPage extends ConsumerStatefulWidget {
 }
 
 class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
-  final PageController _pageController = PageController();
   int _currentStep = 0;
   bool _isSynthesizing = false;
 
@@ -54,14 +53,15 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
     'Studio Mirror Suite',
   ];
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
   void _nextStep() {
     if (_currentStep < 3) {
       setState(() => _currentStep++);
-      _pageController.animateToPage(
-        _currentStep,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
     } else {
       _startSynthesis();
     }
@@ -70,11 +70,6 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
   void _previousStep() {
     if (_currentStep > 0) {
       setState(() => _currentStep--);
-      _pageController.animateToPage(
-        _currentStep,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
     }
   }
 
@@ -156,16 +151,19 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
               ),
               const SizedBox(height: 24),
 
+              // Keep the current step in a normal, bounded scroll view. The
+              // previous PageView could fail to lay out on some Android
+              // devices when one of its form children requested intrinsic
+              // height; the progress row then remained visible while the
+              // whole content viewport was blank.
               Expanded(
-                child: PageView(
-                  controller: _pageController,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    _buildStep1(),
-                    _buildStep2(),
-                    _buildStep3(),
-                    _buildStep4(),
-                  ],
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  child: SingleChildScrollView(
+                    key: ValueKey(_currentStep),
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: _buildCurrentStep(),
+                  ),
                 ),
               ),
 
@@ -210,6 +208,19 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildCurrentStep() {
+    switch (_currentStep) {
+      case 1:
+        return _buildStep2();
+      case 2:
+        return _buildStep3();
+      case 3:
+        return _buildStep4();
+      default:
+        return _buildStep1();
+    }
   }
 
   Widget _buildStep1() {
@@ -424,103 +435,101 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
   }
 
   Widget _buildStep3() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Focus domain target specs',
-            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Focus domain target specs',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Skills & Ecosystem',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'Skills & Ecosystem',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
+        ),
+        const SizedBox(height: 16),
 
-          const Text(
-            'Primary Learning Goal',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          GlassTextField(
-            hintText: 'e.g. build strength, improve technique…',
-            prefixIcon: Icons.flag_rounded,
-            onChanged: (val) => setState(() => _learningGoal = val),
-          ),
-          const SizedBox(height: 20),
+        const Text(
+          'Primary Learning Goal',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        GlassTextField(
+          hintText: 'e.g. build strength, improve technique…',
+          prefixIcon: Icons.flag_rounded,
+          onChanged: (val) => setState(() => _learningGoal = val),
+        ),
+        const SizedBox(height: 20),
 
-          const Text(
-            'Target Skill Matrices',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _skillOptions.map((sk) {
-              final isSel = _selectedSkills.contains(sk);
-              return ChoiceChip(
-                label: Text(sk),
-                selected: isSel,
-                selectedColor: AppColors.primaryBlue,
-                backgroundColor: AppColors.surface,
-                labelStyle: TextStyle(
-                  color: isSel ? Colors.white : AppColors.textMuted,
-                  fontSize: 12,
-                ),
-                onSelected: (selected) {
-                  setState(() {
-                    if (selected) {
-                      _selectedSkills.add(sk);
-                    } else {
-                      _selectedSkills.remove(sk);
-                    }
-                  });
-                },
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 20),
+        const Text(
+          'Target Skill Matrices',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _skillOptions.map((sk) {
+            final isSel = _selectedSkills.contains(sk);
+            return ChoiceChip(
+              label: Text(sk),
+              selected: isSel,
+              selectedColor: AppColors.primaryBlue,
+              backgroundColor: AppColors.surface,
+              labelStyle: TextStyle(
+                color: isSel ? Colors.white : AppColors.textMuted,
+                fontSize: 12,
+              ),
+              onSelected: (selected) {
+                setState(() {
+                  if (selected) {
+                    _selectedSkills.add(sk);
+                  } else {
+                    _selectedSkills.remove(sk);
+                  }
+                });
+              },
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 20),
 
-          const Text(
-            'Available Equipment Suite',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _equipmentOptions.map((eq) {
-              final isSel = _selectedEquipment.contains(eq);
-              return ChoiceChip(
-                label: Text(eq),
-                selected: isSel,
-                selectedColor: AppColors.primaryPurple,
-                backgroundColor: AppColors.surface,
-                labelStyle: TextStyle(
-                  color: isSel ? Colors.white : AppColors.textMuted,
-                  fontSize: 12,
-                ),
-                onSelected: (selected) {
-                  setState(() {
-                    if (selected) {
-                      _selectedEquipment.add(eq);
-                    } else {
-                      _selectedEquipment.remove(eq);
-                    }
-                  });
-                },
-              );
-            }).toList(),
-          ),
-        ],
-      ),
+        const Text(
+          'Available Equipment Suite',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _equipmentOptions.map((eq) {
+            final isSel = _selectedEquipment.contains(eq);
+            return ChoiceChip(
+              label: Text(eq),
+              selected: isSel,
+              selectedColor: AppColors.primaryPurple,
+              backgroundColor: AppColors.surface,
+              labelStyle: TextStyle(
+                color: isSel ? Colors.white : AppColors.textMuted,
+                fontSize: 12,
+              ),
+              onSelected: (selected) {
+                setState(() {
+                  if (selected) {
+                    _selectedEquipment.add(eq);
+                  } else {
+                    _selectedEquipment.remove(eq);
+                  }
+                });
+              },
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 
