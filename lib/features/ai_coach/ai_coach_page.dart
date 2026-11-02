@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_container.dart';
 import '../../core/widgets/glass_text_field.dart';
+import '../../core/widgets/preview_badge.dart';
 import '../providers/app_providers.dart';
 
 class AiCoachPage extends ConsumerStatefulWidget {
@@ -89,6 +90,8 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
                       ],
                     ),
                   ),
+                  const SizedBox(width: 10),
+                  const PreviewBadge(label: 'DEMO COACH'),
                 ],
               ),
             ),
@@ -108,7 +111,7 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
                     const SizedBox(width: 10),
                     const Expanded(
                       child: Text(
-                        'Coach guidance is based on movement findings from your practice sessions.',
+                        'Demo guidance is shown here until a verified practice session is available. Real coaching will use your measured movement findings.',
                         style: TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 12,
@@ -193,7 +196,9 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
               onPressed: () => context.push('/practice'),
               icon: const Icon(Icons.videocam_outlined, size: 18),
               label: const Text('Start a practice session'),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primaryBlue),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primaryBlue,
+              ),
             ),
             const SizedBox(height: 4),
           ],

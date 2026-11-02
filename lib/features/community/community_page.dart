@@ -5,6 +5,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_container.dart';
 import '../../core/widgets/glass_text_field.dart';
 import '../../core/widgets/gradient_button.dart';
+import '../../core/widgets/preview_badge.dart';
 import '../../core/widgets/skill_badge.dart';
 import '../providers/app_providers.dart';
 
@@ -65,7 +66,9 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
                 if (titleController.text.isNotEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Post shared with the MotionMind community.'),
+                      content: Text(
+                        'Post shared with the MotionMind community.',
+                      ),
                       backgroundColor: AppColors.emeraldGreen,
                     ),
                   );
@@ -101,13 +104,23 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
-              const Text(
-                'MotionMind community',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Expanded(
+                    child: Text(
+                      'MotionMind community',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  PreviewBadge(label: 'MOCK FEED'),
+                ],
               ),
               const SizedBox(height: 4),
               const Text(
@@ -134,8 +147,15 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
                               children: [
                                 CircleAvatar(
                                   radius: 20,
-                                  backgroundImage: NetworkImage(
-                                    post.authorAvatar,
+                                  backgroundColor: AppColors.primaryBlue
+                                      .withValues(alpha: .18),
+                                  child: Text(
+                                    _initials(post.authorName),
+                                    style: const TextStyle(
+                                      color: AppColors.cyanGlow,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 12,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -191,7 +211,10 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
                             const SizedBox(height: 16),
 
                             // Actions Bar (Upvote, Comment, Share)
-                            Row(
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 8,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 InkWell(
                                   borderRadius: BorderRadius.circular(20),
@@ -242,7 +265,6 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 12),
                                 Row(
                                   children: [
                                     const Icon(
@@ -260,7 +282,6 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
                                     ),
                                   ],
                                 ),
-                                const Spacer(),
                                 Text(
                                   post.timeAgo,
                                   style: const TextStyle(
@@ -283,4 +304,12 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
       ),
     );
   }
+}
+
+String _initials(String name) {
+  final parts = name.trim().split(RegExp(r'\s+'));
+  if (parts.isEmpty || parts.first.isEmpty) return 'M';
+  final first = parts.first[0];
+  final last = parts.length > 1 && parts.last.isNotEmpty ? parts.last[0] : '';
+  return '$first$last'.toUpperCase();
 }

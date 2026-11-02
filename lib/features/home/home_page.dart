@@ -5,10 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_container.dart';
 import '../../core/widgets/gradient_button.dart';
+import '../../core/widgets/preview_badge.dart';
 import '../providers/app_providers.dart';
 
-/// The first screen a new user sees. It intentionally shows only data that
-/// MotionMind can currently support; session history is not simulated.
+/// The first screen a new user sees. Real history is never fabricated; the
+/// progress card is an explicitly labelled preview until sessions exist.
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
@@ -59,7 +60,7 @@ class HomePage extends ConsumerWidget {
                     subtitle: 'Your real session insights will appear here.',
                   ),
                   const SizedBox(height: 10),
-                  const _EmptyProgressCard(),
+                  const _ProgressPreviewCard(),
                   const SizedBox(height: 24),
                   const _SectionHeading(
                     title: 'Explore movement',
@@ -217,37 +218,72 @@ class _SectionHeading extends StatelessWidget {
   }
 }
 
-class _EmptyProgressCard extends StatelessWidget {
-  const _EmptyProgressCard();
+class _ProgressPreviewCard extends StatelessWidget {
+  const _ProgressPreviewCard();
 
   @override
   Widget build(BuildContext context) {
     return GlassContainer(
       padding: const EdgeInsets.all(18),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              borderRadius: BorderRadius.circular(AppColors.radiusMedium),
-            ),
-            child: const Icon(
-              Icons.insights_outlined,
-              color: AppColors.primaryBlue,
-              size: 24,
+          const Text(
+            'Example progress',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
             ),
           ),
-          const SizedBox(width: 14),
-          const Expanded(
-            child: Text(
-              'Complete your first practice to unlock movement insights and history.',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-                height: 1.4,
-              ),
+          const SizedBox(height: 8),
+          const Align(alignment: Alignment.centerLeft, child: PreviewBadge()),
+          const SizedBox(height: 14),
+          const Row(
+            children: [
+              _HomeMockMetric(value: '6', label: 'sessions'),
+              _HomeMockMetric(value: '42m', label: 'training'),
+              _HomeMockMetric(value: '38', label: 'reps'),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Illustrative values only. Your dashboard will update after real practice sessions.',
+            style: TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 11,
+              height: 1.35,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeMockMetric extends StatelessWidget {
+  const _HomeMockMetric({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.cyanGlow,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
           ),
         ],
       ),

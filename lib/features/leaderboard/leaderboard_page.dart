@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_container.dart';
+import '../../core/widgets/preview_badge.dart';
 
 class LeaderboardPage extends StatefulWidget {
   const LeaderboardPage({super.key});
@@ -95,6 +96,8 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                             fontSize: 12,
                           ),
                         ),
+                        SizedBox(height: 7),
+                        PreviewBadge(label: 'MOCK RANKINGS'),
                       ],
                     ),
                   ),
@@ -185,7 +188,17 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                             ),
                             CircleAvatar(
                               radius: 18,
-                              backgroundImage: NetworkImage(user.avatar),
+                              backgroundColor: AppColors.primaryBlue.withValues(
+                                alpha: .18,
+                              ),
+                              child: Text(
+                                _initials(user.name),
+                                style: const TextStyle(
+                                  color: AppColors.cyanGlow,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                ),
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -292,7 +305,15 @@ class _PodiumCard extends StatelessWidget {
         const SizedBox(height: 4),
         CircleAvatar(
           radius: isFirst ? 28 : 22,
-          backgroundImage: NetworkImage(user.avatar),
+          backgroundColor: AppColors.primaryBlue.withValues(alpha: .18),
+          child: Text(
+            _initials(user.name),
+            style: TextStyle(
+              color: AppColors.cyanGlow,
+              fontWeight: FontWeight.w800,
+              fontSize: isFirst ? 14 : 12,
+            ),
+          ),
         ),
         const SizedBox(height: 6),
         GlassContainer(
@@ -335,6 +356,14 @@ class _PodiumCard extends StatelessWidget {
       ],
     );
   }
+}
+
+String _initials(String name) {
+  final parts = name.trim().split(RegExp(r'\s+'));
+  if (parts.isEmpty || parts.first.isEmpty) return 'M';
+  final first = parts.first[0];
+  final last = parts.length > 1 && parts.last.isNotEmpty ? parts.last[0] : '';
+  return '$first$last'.toUpperCase();
 }
 
 class _LeaderboardUser {

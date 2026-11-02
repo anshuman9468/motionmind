@@ -7,6 +7,12 @@ import 'package:skillverse_ai/features/home/home_page.dart';
 import 'package:skillverse_ai/features/marketplace/marketplace_page.dart';
 import 'package:skillverse_ai/features/practice/exercise_selection_page.dart';
 import 'package:skillverse_ai/features/onboarding/onboarding_details_page.dart';
+import 'package:skillverse_ai/features/dashboard/dashboard_page.dart';
+import 'package:skillverse_ai/features/digital_twin/digital_twin_page.dart';
+import 'package:skillverse_ai/features/achievements/achievements_page.dart';
+import 'package:skillverse_ai/features/profile/profile_page.dart';
+import 'package:skillverse_ai/features/leaderboard/leaderboard_page.dart';
+import 'package:skillverse_ai/features/community/community_page.dart';
 
 void main() {
   Future<void> pumpAtSize(WidgetTester tester, Widget child, Size size) async {
@@ -76,5 +82,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Habits & Levels'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('preview sections remain visible without layout overflow', (
+    tester,
+  ) async {
+    final pages = <Widget>[
+      const DashboardPage(),
+      const DigitalTwinPage(),
+      const AchievementsPage(),
+      const ProfilePage(),
+      const LeaderboardPage(),
+      const CommunityPage(),
+    ];
+
+    for (final page in pages) {
+      await pumpAtSize(tester, page, const Size(393, 852));
+      expect(tester.takeException(), isNull);
+      expect(find.byType(Scaffold), findsOneWidget);
+    }
   });
 }

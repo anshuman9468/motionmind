@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_container.dart';
+import '../../core/widgets/preview_badge.dart';
 import '../practice/models/exercise_registry.dart';
 
 /// Explore is deliberately focused on the supported movement catalogue. The
@@ -27,17 +28,26 @@ class _MarketplacePageState extends State<MarketplacePage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
           children: [
-            const Text(
-              'Explore',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 30,
-                fontWeight: FontWeight.w800,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Expanded(
+                  child: Text(
+                    'Explore',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 30,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 10),
+                PreviewBadge(label: 'MOCK CATALOGUE'),
+              ],
             ),
             const SizedBox(height: 8),
             const Text(
-              'Choose a movement to practice with clear, camera-based feedback.',
+              'Browse the movement catalogue. The cards below are illustrative until your own sessions are recorded.',
               style: TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 15,
@@ -52,9 +62,8 @@ class _MarketplacePageState extends State<MarketplacePage> {
                     selected: _category == ExerciseCategory.sports,
                     icon: Icons.sports_basketball_rounded,
                     label: 'Sports',
-                    onTap: () => setState(
-                      () => _category = ExerciseCategory.sports,
-                    ),
+                    onTap: () =>
+                        setState(() => _category = ExerciseCategory.sports),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -63,7 +72,8 @@ class _MarketplacePageState extends State<MarketplacePage> {
                     selected: _category == ExerciseCategory.gym,
                     icon: Icons.fitness_center_rounded,
                     label: 'Gym',
-                    onTap: () => setState(() => _category = ExerciseCategory.gym),
+                    onTap: () =>
+                        setState(() => _category = ExerciseCategory.gym),
                   ),
                 ),
               ],
@@ -155,7 +165,11 @@ class _ExerciseCard extends StatelessWidget {
                 color: AppColors.primaryBlue.withValues(alpha: .14),
                 borderRadius: BorderRadius.circular(AppColors.radiusSmall),
               ),
-              child: Icon(exercise.icon, color: AppColors.primaryBlue, size: 25),
+              child: Icon(
+                exercise.icon,
+                color: AppColors.primaryBlue,
+                size: 25,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -202,7 +216,10 @@ class _ExerciseCard extends StatelessWidget {
             const SizedBox(width: 8),
             const Padding(
               padding: EdgeInsets.only(top: 14),
-              child: Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+              child: Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textMuted,
+              ),
             ),
           ],
         ),

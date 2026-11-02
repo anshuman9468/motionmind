@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_container.dart';
 import '../../core/widgets/glass_text_field.dart';
 import '../../core/widgets/gradient_button.dart';
+import '../../core/widgets/preview_badge.dart';
 import '../providers/app_providers.dart';
 
 class ProfilePage extends ConsumerWidget {
@@ -135,27 +136,42 @@ class ProfilePage extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 10),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Example history',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                PreviewBadge(label: 'MOCK DATA'),
+              ],
+            ),
+            const SizedBox(height: 10),
+            const _MockHistoryItem(
+              icon: Icons.fitness_center_rounded,
+              title: 'Squat fundamentals',
+              detail: '12 reps · 8 min · Example session',
+            ),
+            const SizedBox(height: 8),
+            const _MockHistoryItem(
+              icon: Icons.sports_martial_arts_rounded,
+              title: 'Boxing jab mechanics',
+              detail: '24 cycles · 10 min · Example session',
+            ),
+            const SizedBox(height: 8),
             GlassContainer(
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.calendar_today_outlined,
-                    color: AppColors.primaryBlue,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'No completed sessions yet. Your practice history will appear here after your first session.',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
-                        height: 1.45,
-                      ),
-                    ),
-                  ),
-                ],
+              padding: const EdgeInsets.all(14),
+              child: const Text(
+                'These entries are previews only. Your real history will appear after verified sessions.',
+                style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 12,
+                  height: 1.4,
+                ),
               ),
             ),
             const SizedBox(height: 24),
@@ -219,22 +235,76 @@ class _ProfileTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      onTap: onTap,
-      leading: Icon(icon, color: AppColors.primaryBlue),
-      title: Text(
-        title,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        onTap: onTap,
+        leading: Icon(icon, color: AppColors.primaryBlue),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+        ),
+        trailing: const Icon(
+          Icons.chevron_right_rounded,
+          color: AppColors.textMuted,
+        ),
       ),
-      subtitle: Text(
-        subtitle,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-      ),
-      trailing: const Icon(
-        Icons.chevron_right_rounded,
-        color: AppColors.textMuted,
+    );
+  }
+}
+
+class _MockHistoryItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String detail;
+
+  const _MockHistoryItem({
+    required this.icon,
+    required this.title,
+    required this.detail,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassContainer(
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.primaryBlue),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  detail,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+        ],
       ),
     );
   }
