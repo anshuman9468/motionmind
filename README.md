@@ -45,6 +45,7 @@ device.
 | Experience | What it does |
 | --- | --- |
 | **Live practice** | Camera-based pose tracking with front/rear camera switching. |
+| **Voice coach** | On-device, rate-limited spoken cues for tracking, phases, reps, and verified corrections. |
 | **Exercise-first flow** | Sports/Gym selection, preparation guidance, and stable canonical exercise IDs. |
 | **Movement quality** | MediaPipe landmarks plus a separate, optional TFLite signal. |
 | **Biomechanics** | Confidence-gated geometric measurements; invalid frames abstain. |
@@ -72,7 +73,8 @@ flowchart LR
 ### Runtime split
 
 - **On device:** camera frames, pose landmarks, quality inference, responsive
-  practice UI, and camera controls.
+  practice UI, camera controls, and offline voice coaching through the phone's
+  text-to-speech engine.
 - **Backend:** agent orchestration, biomechanics interpretation, performance
   evaluation, coaching, recommendations, digital-twin updates, and memory.
 - **Optional services:** Firebase authentication and Firestore. The app falls
@@ -192,6 +194,15 @@ state machine). Landmark samples are sent to FastAPI at a bounded rate for
 vision, biomechanics, temporal verification, and coaching. A failed request
 leaves the local tracker available and is shown as offline; it is never
 reported as a successful backend result.
+
+### Voice coaching
+
+Voice coaching is enabled by default when a practice session starts. It uses
+the Android/iOS text-to-speech engine locally, so phase and repetition cues do
+not wait for Gemini or a network request. Cues are emitted only after the
+confidence gate accepts a frame and are rate-limited to avoid repeated speech.
+Use the speaker button in the camera header to mute or resume voice cues. The
+phone must have a working system text-to-speech engine and media volume.
 
 ## Run on a phone
 
