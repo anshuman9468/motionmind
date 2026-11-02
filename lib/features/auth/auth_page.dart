@@ -43,16 +43,20 @@ class _AuthPageState extends ConsumerState<AuthPage>
     try {
       if (_tabController.index == 0) {
         // Sign In
-        await auth.signInWithEmail(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-        );
+        await auth
+            .signInWithEmail(
+              _emailController.text.trim(),
+              _passwordController.text.trim(),
+            )
+            .timeout(const Duration(seconds: 8));
       } else {
         // Create Account
-        await auth.signUpWithEmail(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-        );
+        await auth
+            .signUpWithEmail(
+              _emailController.text.trim(),
+              _passwordController.text.trim(),
+            )
+            .timeout(const Duration(seconds: 8));
       }
       if (mounted) {
         context.go('/onboarding-details');
@@ -77,11 +81,13 @@ class _AuthPageState extends ConsumerState<AuthPage>
 
     try {
       if (provider == 'google') {
-        await auth.signInWithGoogle();
+        await auth.signInWithGoogle().timeout(const Duration(seconds: 8));
       } else if (provider == 'apple') {
-        await auth.signInWithApple();
+        await auth.signInWithApple().timeout(const Duration(seconds: 8));
       } else {
-        await auth.signInAnonymously(); // Guest fallback
+        await auth.signInAnonymously().timeout(
+          const Duration(seconds: 8),
+        ); // Guest fallback
       }
       if (mounted) {
         context.go('/onboarding-details');

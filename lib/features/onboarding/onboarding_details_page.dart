@@ -98,17 +98,24 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
 
     ref.read(onboardingDetailsProvider.notifier).state = details;
 
-    // Save profile to Firestore / Mock Database
+    // Save profile as a best-effort operation. A missing/offline Firebase
+    // configuration must never trap the user on the setup screen.
     final db = ref.read(databaseServiceProvider);
     final auth = ref.read(authServiceProvider);
     final uid = auth.currentUser?.uid ?? 'usr_99';
-    await db.saveUserProfile(uid, details);
+    try {
+      await db
+          .saveUserProfile(uid, details)
+          .timeout(const Duration(seconds: 3));
+    } catch (error) {
+      debugPrint('Profile sync skipped during setup: $error');
+    }
 
     // Update local user state
     ref.read(userProvider.notifier).updateFromOnboarding(details);
 
     // Dynamic Digital Twin synthesis animation duration
-    await Future.delayed(const Duration(milliseconds: 3200));
+    await Future.delayed(const Duration(milliseconds: 700));
 
     if (mounted) {
       context.go('/');
@@ -435,7 +442,7 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
           ),
           const SizedBox(height: 8),
           GlassTextField(
-          hintText: 'e.g. build strength, improve technique…',
+            hintText: 'e.g. build strength, improve technique…',
             prefixIcon: Icons.flag_rounded,
             onChanged: (val) => setState(() => _learningGoal = val),
           ),
@@ -561,7 +568,7 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
         const SizedBox(height: 20),
 
         const Text(
-                'Practice frequency',
+          'Practice frequency',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),

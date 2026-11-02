@@ -14,7 +14,9 @@ class _SplashPageState extends State<SplashPage> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 2800), () {
+    // Keep the launch screen short. It is branding, not a required loading
+    // step, so a slow device should never appear to be stuck here.
+    Future.delayed(const Duration(milliseconds: 900), () {
       if (mounted) {
         context.go('/onboarding');
       }
