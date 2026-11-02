@@ -150,20 +150,32 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
                 }),
               ),
               const SizedBox(height: 24),
+              const Text(
+                'Set up your MotionMind profile',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'A few details help us tailor your practice sessions.',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+              ),
+              const SizedBox(height: 20),
 
               // Keep the current step in a normal, bounded scroll view. The
               // previous PageView could fail to lay out on some Android
               // devices when one of its form children requested intrinsic
               // height; the progress row then remained visible while the
-              // whole content viewport was blank.
+              // whole content viewport was blank. A plain scroll view keeps
+              // every step in one finite, predictable layout pass.
               Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
-                  child: SingleChildScrollView(
-                    key: ValueKey(_currentStep),
-                    padding: const EdgeInsets.only(bottom: 20),
-                    child: _buildCurrentStep(),
-                  ),
+                child: SingleChildScrollView(
+                  key: ValueKey(_currentStep),
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: _buildCurrentStep(),
                 ),
               ),
 
