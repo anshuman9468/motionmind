@@ -103,18 +103,21 @@ class MainNavigationShell extends StatelessWidget {
         icon: Icons.groups_3_outlined,
         activeIcon: Icons.groups_3_rounded,
         label: 'Community',
+        subtitle: 'Preview feed',
         route: '/community',
       ),
       _NavItem(
         icon: Icons.emoji_events_outlined,
         activeIcon: Icons.emoji_events_rounded,
         label: 'Leaderboard',
+        subtitle: 'Preview rankings',
         route: '/leaderboard',
       ),
       _NavItem(
         icon: Icons.workspace_premium_outlined,
         activeIcon: Icons.workspace_premium_rounded,
         label: 'Achievements',
+        subtitle: 'Preview milestones',
         route: '/achievements',
       ),
       _NavItem(
@@ -210,6 +213,15 @@ class MainNavigationShell extends StatelessWidget {
                             fontSize: 14,
                           ),
                         ),
+                        subtitle: item.subtitle == null
+                            ? null
+                            : Text(
+                                item.subtitle!,
+                                style: const TextStyle(
+                                  color: AppColors.textMuted,
+                                  fontSize: 11,
+                                ),
+                              ),
                         trailing: const Icon(
                           Icons.arrow_forward_ios_rounded,
                           color: AppColors.textMuted,
@@ -315,12 +327,14 @@ class _NavItem {
   final IconData icon;
   final IconData activeIcon;
   final String label;
+  final String? subtitle;
   final String route;
 
   const _NavItem({
     required this.icon,
     required this.activeIcon,
     required this.label,
+    this.subtitle,
     required this.route,
   });
 }
