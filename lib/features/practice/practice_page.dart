@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import '../../core/services/motionmind_api_service.dart';
+import '../../core/services/voice_coach_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_container.dart';
 import '../../core/widgets/gradient_button.dart';
@@ -45,6 +46,7 @@ class _PracticePageState extends State<PracticePage>
   // Mode toggles
   bool _isGhostModeEnabled = false;
   bool _isReplayModeEnabled = false;
+  bool _voiceCoachEnabled = true;
   PoseOverlayMode _overlayMode = PoseOverlayMode.minimal;
   // Native Platform Channel Bridge
   static const _visionChannel = MethodChannel(
@@ -80,6 +82,7 @@ class _PracticePageState extends State<PracticePage>
   late ExerciseTemporalResult _exerciseTemporalResult;
   int? _latestPayloadTimestampUs;
   final Set<String> _sessionVerifiedFindings = <String>{};
+  final VoiceCoachService _voiceCoach = VoiceCoachService();
 
   late AnimationController _pulseController;
 
@@ -97,6 +100,7 @@ class _PracticePageState extends State<PracticePage>
     _currentBiomechanicsProfile = _exercise.profile;
     _exerciseTemporalTracker = ExerciseTemporalTracker(_exercise);
     _exerciseTemporalResult = ExerciseTemporalResult.initial(_exercise.name);
+    unawaited(_voiceCoach.initialize());
     unawaited(_checkBackendHealth());
     _initializeCamera();
     _startSession();
@@ -109,6 +113,7 @@ class _PracticePageState extends State<PracticePage>
       unawaited(_cameraController!.stopImageStream());
     }
     _cameraController?.dispose();
+    unawaited(_voiceCoach.dispose());
     _pulseController.dispose();
     super.dispose();
   }
@@ -219,7 +224,8 @@ class _PracticePageState extends State<PracticePage>
     if (defaultTargetPlatform != TargetPlatform.android) {
       if (mounted) {
         setState(
-          () => _onDevicePoseError = 'Movement tracking is available on Android.',
+          () =>
+              _onDevicePoseError = 'Movement tracking is available on Android.',
         );
       }
       return;
@@ -393,6 +399,34 @@ class _PracticePageState extends State<PracticePage>
       }
     });
     _scheduleBackendAnalysis(payload);
+    unawaited(_announceVoiceTracking(payload, squatResult, exerciseResult));
+  }
+
+  Future<void> _announceVoiceTracking(
+    HumanTrackingPayload payload,
+    SquatTemporalResult? squatResult,
+    ExerciseTemporalResult? exerciseResult,
+  ) async {
+    final detected =
+        payload.humanDetected &&
+        payload.trackingState == HumanDetectionState.humanLocked;
+    final resultStatus = squatResult?.status ?? exerciseResult?.status;
+    final evaluationValid = resultStatus == BiomechanicsEvaluationStatus.valid;
+    await _voiceCoach.handleTrackingUpdate(
+      exerciseId: _exercise.id,
+      trackingReady: detected && evaluationValid,
+      evaluationValid: evaluationValid,
+      phase: squatResult?.phase.label ?? exerciseResult?.phaseLabel ?? '',
+      repetitions:
+          squatResult?.repetitionCount ?? exerciseResult?.repetitionCount ?? 0,
+      completedRepetition:
+          squatResult?.completedRep ?? exerciseResult?.completedCycle ?? false,
+      instruction: squatResult?.message ?? exerciseResult?.message,
+      feedbackEligible:
+          squatResult?.feedbackEligible ??
+          exerciseResult?.feedbackEligible ??
+          false,
+    );
   }
 
   void _scheduleBackendAnalysis(HumanTrackingPayload payload) {
@@ -562,10 +596,14 @@ class _PracticePageState extends State<PracticePage>
       _resetTemporalAfterInterruption(
         'SESSION PAUSED. REPOSITION BEFORE RESUMING TRACKING.',
       );
+      unawaited(_voiceCoach.speakCue('Session paused.'));
     }
     setState(() {
       _isPaused = !_isPaused;
     });
+    if (!_isPaused) {
+      unawaited(_voiceCoach.speakCue('Session resumed. Move when ready.'));
+    }
   }
 
   Future<void> _resetBackendTemporal() async {
@@ -599,6 +637,21 @@ class _PracticePageState extends State<PracticePage>
       _practiceScore = null;
       _backendStatus = 'Tracking lost';
     });
+    if (!message.toUpperCase().contains('PAUSED')) {
+      unawaited(
+        _voiceCoach.handleTrackingUpdate(
+          exerciseId: _exercise.id,
+          trackingReady: false,
+          evaluationValid: false,
+          phase: '',
+          repetitions: temporalResult.repetitionCount > 0
+              ? temporalResult.repetitionCount
+              : exerciseResult.repetitionCount,
+          completedRepetition: false,
+          instruction: message,
+        ),
+      );
+    }
   }
 
   int get _activeRepetitionCount => _isSquatProfile
@@ -618,6 +671,7 @@ class _PracticePageState extends State<PracticePage>
 
   void _finishSession() {
     HapticFeedback.heavyImpact();
+    unawaited(_voiceCoach.stop());
     _sessionTimer?.cancel();
     unawaited(_persistSession());
 
@@ -674,7 +728,10 @@ class _PracticePageState extends State<PracticePage>
                     _practiceScore == null ? 'Pending' : '$_practiceScore%',
                   ),
                   _buildStatSummary('Reps', '$_activeRepetitionCount'),
-                  _buildStatSummary('Duration', _formatDuration(_secondsElapsed)),
+                  _buildStatSummary(
+                    'Duration',
+                    _formatDuration(_secondsElapsed),
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
@@ -817,10 +874,7 @@ class _PracticePageState extends State<PracticePage>
                 'Frames accepted',
                 '$_validFrames / $_poseFramesProcessed',
               ),
-              _diagnosticRow(
-                'Overlay mode',
-                _overlayMode.name,
-              ),
+              _diagnosticRow('Overlay mode', _overlayMode.name),
               if (_onDevicePoseError != null)
                 _diagnosticRow('Camera tracking', _onDevicePoseError!),
             ],
@@ -836,7 +890,10 @@ class _PracticePageState extends State<PracticePage>
       child: Row(
         children: [
           Expanded(
-            child: Text(label, style: const TextStyle(color: AppColors.textMuted)),
+            child: Text(
+              label,
+              style: const TextStyle(color: AppColors.textMuted),
+            ),
           ),
           Flexible(
             child: Text(
@@ -844,7 +901,10 @@ class _PracticePageState extends State<PracticePage>
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.right,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -1079,6 +1139,31 @@ class _PracticePageState extends State<PracticePage>
                         size: 24,
                       ),
                     ),
+                    IconButton(
+                      tooltip: _voiceCoachEnabled
+                          ? 'Turn voice coaching off'
+                          : 'Turn voice coaching on',
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        final enabled = !_voiceCoachEnabled;
+                        setState(() => _voiceCoachEnabled = enabled);
+                        unawaited(_voiceCoach.setEnabled(enabled));
+                        if (enabled) {
+                          unawaited(
+                            _voiceCoach.speakCue('Voice coaching is on.'),
+                          );
+                        }
+                      },
+                      icon: Icon(
+                        _voiceCoachEnabled
+                            ? Icons.volume_up_rounded
+                            : Icons.volume_off_rounded,
+                        color: _voiceCoachEnabled
+                            ? AppColors.primaryBlue
+                            : AppColors.textMuted,
+                        size: 22,
+                      ),
+                    ),
                     PopupMenuButton<String>(
                       tooltip: 'Pose overlay mode',
                       icon: const Icon(
@@ -1091,9 +1176,8 @@ class _PracticePageState extends State<PracticePage>
                           _showDeveloperDiagnostics();
                         } else {
                           setState(
-                            () => _overlayMode = PoseOverlayMode.values.firstWhere(
-                              (value) => value.name == mode,
-                            ),
+                            () => _overlayMode = PoseOverlayMode.values
+                                .firstWhere((value) => value.name == mode),
                           );
                         }
                       },
