@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../../features/practice/models/skill_biomechanics.dart';
 
-/// HTTP client for the MotionMind/SkillVerse FastAPI backend.
+/// HTTP client for the MotionMind FastAPI backend.
 ///
 /// For a phone connected over USB, run `adb reverse tcp:8000 tcp:8000` and
 /// keep the default URL. For a phone on the same Wi-Fi network, pass a LAN

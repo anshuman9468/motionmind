@@ -96,7 +96,7 @@ class _SplashPageState extends State<SplashPage> {
                       shaderCallback: (bounds) =>
                           AppColors.primaryGradient.createShader(bounds),
                       child: const Text(
-                        'SkillVerse AI',
+                        'MotionMind',
                         style: TextStyle(
                           fontSize: 40,
                           fontWeight: FontWeight.w800,
@@ -112,7 +112,7 @@ class _SplashPageState extends State<SplashPage> {
 
                 // Subtitle Tagline
                 const Text(
-                  'Autonomous Skill Optimization Engine',
+                  'Train smarter. Move better.',
                   style: TextStyle(
                     color: AppColors.textMuted,
                     fontSize: 14,

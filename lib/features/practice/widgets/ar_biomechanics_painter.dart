@@ -94,7 +94,7 @@ class ARBiomechanicsPainter extends CustomPainter {
           )
         : null;
     final actionLabel = kneeAngle == null
-        ? 'POSE DATA INCOMPLETE'
+        ? 'TRACKING INCOMPLETE'
         : kneeAngle < 98
         ? 'SITTING / DESK POSTURE'
         : kneeAngle < 115

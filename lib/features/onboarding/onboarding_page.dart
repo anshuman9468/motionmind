@@ -18,23 +18,23 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   final List<_OnboardingSlide> _slides = const [
     _OnboardingSlide(
-      title: 'AI-Powered Digital Twin',
+      title: 'Move with confidence',
       subtitle:
-          'Simulate your cognitive learning trajectory with an evolving AI matrix tuned to your goals.',
+          'Use your phone camera to understand your movement and build better habits.',
       icon: Icons.psychology_rounded,
       accentColor: AppColors.cyanGlow,
     ),
     _OnboardingSlide(
-      title: 'Live Practice Simulator',
+      title: 'Practice with guidance',
       subtitle:
-          'Engage in real-time AI architectural roleplays and scenario-based code reviews.',
+          'Get clear, observable feedback while you practice sports and gym movements.',
       icon: Icons.sports_esports_rounded,
       accentColor: AppColors.primaryPurple,
     ),
     _OnboardingSlide(
-      title: 'Unicorn-Grade Mastery',
+      title: 'Build your routine',
       subtitle:
-          'Compete in global leaderboards, earn verified credentials, and join top 1% builders.',
+          'Review your sessions over time and keep improving at your own pace.',
       icon: Icons.workspace_premium_rounded,
       accentColor: AppColors.emeraldGreen,
     ),
@@ -69,7 +69,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       ),
                       const SizedBox(width: 8),
                       const Text(
-                        'SkillVerse AI',
+                        'MotionMind',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,

@@ -106,7 +106,7 @@ class HumanDetectionOverlay extends StatelessWidget {
                       const SizedBox(width: 6),
                       const Expanded(
                         child: Text(
-                          'MULTIPLE PEOPLE DETECTED — SELECT PRIMARY USER',
+                          'More than one person detected — choose yourself',
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -128,7 +128,7 @@ class HumanDetectionOverlay extends StatelessWidget {
                         child: Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: ChoiceChip(
-                            label: Text('User #${idx + 1}'),
+                            label: Text('Person ${idx + 1}'),
                             selected: isSel,
                             selectedColor: AppColors.primaryBlue,
                             backgroundColor: AppColors.surface,
@@ -187,7 +187,7 @@ class HumanDetectionOverlay extends StatelessWidget {
               ),
             ),
             child: const Text(
-              'SEARCHING FOR HUMAN...\nStep in front of camera to begin biomechanical pose lock',
+              'Move into frame\nKeep your full body visible to begin tracking',
               maxLines: 3,
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -220,7 +220,7 @@ class HumanDetectionOverlay extends StatelessWidget {
             SizedBox(width: 12),
             Expanded(
               child: Text(
-                'BODY NOT CLEAR — MOVE FULLY INTO FRAME\nEnsure head, torso, knees, and feet are visible.',
+                'Move back slightly\nKeep your head, torso, knees, and feet visible.',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 11,

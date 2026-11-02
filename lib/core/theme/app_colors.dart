@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Greek Pantheon Palette (Stygian Black, Olympian Gold, Imperial Crimson, Marble White, Olive Green)
+  // MotionMind's restrained athletic palette.
   static const Color background = Color(0xFF000000); // Stygian Black
   static const Color surface = Color(0xFF0A0A0C); // Obsidian Dark
   static const Color surfaceLight = Color(0xFF141416); // Deep Charcoal
@@ -33,6 +33,18 @@ class AppColors {
   static const Color textPrimary = Color(0xFFFFFFFF);
   static const Color textSecondary = Color(0xFFCCCCCC);
   static const Color textMuted = Color(0xFF888888);
+
+  // Shared product tokens. Keeping these here prevents individual screens
+  // from inventing a new colour for every state or card.
+  static const Color textOnAccent = Color(0xFF17130A);
+  static const Color outline = Color(0x2EFFFFFF);
+  static const Color success = Color(0xFF8FAE58);
+  static const Color warning = Color(0xFFE0B23C);
+  static const Color danger = Color(0xFFD45B5B);
+  static const double radiusSmall = 12;
+  static const double radiusMedium = 18;
+  static const double radiusLarge = 24;
+  static const double pagePadding = 20;
 
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(

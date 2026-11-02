@@ -25,7 +25,7 @@ class _ExerciseSelectionPageState extends State<ExerciseSelectionPage> {
         foregroundColor: Colors.white,
         elevation: 0,
         title: const Text(
-          'Live coaching',
+          'Choose a practice',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
@@ -41,7 +41,7 @@ class _ExerciseSelectionPageState extends State<ExerciseSelectionPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'WHAT DO YOU WANT\nTO PRACTICE?',
+                    'What would you like\nto practice?',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 30,
@@ -51,7 +51,7 @@ class _ExerciseSelectionPageState extends State<ExerciseSelectionPage> {
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'Choose a movement profile before the camera opens. MotionMind will only show measurements supported by that profile.',
+                    'Choose a sport or workout before the camera opens. We will show only feedback supported by that movement.',
                     style: TextStyle(
                       color: AppColors.textMuted,
                       fontSize: 14,
@@ -65,8 +65,8 @@ class _ExerciseSelectionPageState extends State<ExerciseSelectionPage> {
                         child: _categoryCard(
                           ExerciseCategory.sports,
                           Icons.sports_rounded,
-                          'SPORTS',
-                          'Athletic skills and technique',
+                          'Sports',
+                          'Technique and athletic movement',
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -74,8 +74,8 @@ class _ExerciseSelectionPageState extends State<ExerciseSelectionPage> {
                         child: _categoryCard(
                           ExerciseCategory.gym,
                           Icons.fitness_center_rounded,
-                          'GYM',
-                          'Strength and movement control',
+                          'Gym',
+                          'Form, control, and repetitions',
                         ),
                       ),
                     ],
@@ -86,8 +86,8 @@ class _ExerciseSelectionPageState extends State<ExerciseSelectionPage> {
                     children: [
                       Text(
                         _category == ExerciseCategory.sports
-                            ? 'Sports profiles'
-                            : 'Gym profiles',
+                            ? 'Sports'
+                            : 'Gym',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
@@ -95,7 +95,7 @@ class _ExerciseSelectionPageState extends State<ExerciseSelectionPage> {
                         ),
                       ),
                       Text(
-                        '${exercises.length} options',
+                        '${exercises.length} movements',
                         style: const TextStyle(
                           color: AppColors.textMuted,
                           fontSize: 12,
@@ -224,14 +224,16 @@ class _ExerciseSelectionPageState extends State<ExerciseSelectionPage> {
                     spacing: 6,
                     runSpacing: 4,
                     children: [
-                      _tag(exercise.supportedView.toUpperCase()),
+                      _tag(_viewLabel(exercise.supportedView)),
                       _tag(
-                        exercise.temporalSupported ? 'PHASES' : 'MEASUREMENTS',
+                        exercise.temporalSupported
+                            ? 'Movement phases'
+                            : 'Measurements',
                       ),
                       _tag(
                         exercise.scoreSupported
-                            ? 'HEURISTIC RULES'
-                            : 'TRACKING ONLY',
+                            ? 'Technique feedback'
+                            : 'Movement tracking',
                       ),
                     ],
                   ),
@@ -262,4 +264,10 @@ class _ExerciseSelectionPageState extends State<ExerciseSelectionPage> {
       ),
     ),
   );
+
+  String _viewLabel(String view) => switch (view) {
+    'side' => 'Side view',
+    'front' => 'Front view',
+    _ => 'Supported view',
+  };
 }

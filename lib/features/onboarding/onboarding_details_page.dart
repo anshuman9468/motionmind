@@ -23,14 +23,14 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
 
   // Controllers & Form variables
   final TextEditingController _nameController = TextEditingController(
-    text: 'Alex Vance',
+    text: 'Your name',
   );
   double _age = 25;
   String _gender = 'Male';
   double _height = 175.0; // cm
   double _weight = 70.0; // kg
   String _dominantHand = 'Right';
-  String _learningGoal = 'Olympic Gold Medalist';
+  String _learningGoal = 'Move with confidence';
 
   final List<String> _selectedSkills = [];
   final List<String> _selectedEquipment = [];
@@ -183,7 +183,7 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
                     const SizedBox(),
 
                   GradientButton(
-                    text: _currentStep == 3 ? 'Sync Digital Twin' : 'Continue',
+                    text: _currentStep == 3 ? 'Finish setup' : 'Continue',
                     icon: _currentStep == 3
                         ? Icons.auto_awesome_rounded
                         : Icons.arrow_forward_ios_rounded,
@@ -435,7 +435,7 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
           ),
           const SizedBox(height: 8),
           GlassTextField(
-            hintText: 'e.g. Lead Robotics Dev, Unicorn founder...',
+          hintText: 'e.g. build strength, improve technique…',
             prefixIcon: Icons.flag_rounded,
             onChanged: (val) => setState(() => _learningGoal = val),
           ),
@@ -561,7 +561,7 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
         const SizedBox(height: 20),
 
         const Text(
-          'Target Telemetry Frequency',
+                'Practice frequency',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
@@ -631,7 +631,7 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
               const SizedBox(height: 36),
 
               const Text(
-                'Synthesizing Skill DNA...',
+                'Setting up your practice space…',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,
@@ -641,7 +641,7 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
               const SizedBox(height: 12),
 
               const Text(
-                'Calibrating 6-axis Digital Twin sensors and syncing telemetry vectors to Firestore cloud database.',
+                'Saving your preferences so MotionMind can tailor camera setup guidance.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColors.textMuted,

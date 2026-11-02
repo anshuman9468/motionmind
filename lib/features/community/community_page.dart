@@ -44,7 +44,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
                 ),
                 const SizedBox(height: 14),
                 GlassTextField(
-                  hintText: 'Share technical insights or questions...',
+                  hintText: 'Share a training tip or question...',
                   controller: contentController,
                   prefixIcon: Icons.notes_rounded,
                 ),
@@ -65,7 +65,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
                 if (titleController.text.isNotEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Post published to SkillVerse Community!'),
+                      content: Text('Post shared with the MotionMind community.'),
                       backgroundColor: AppColors.emeraldGreen,
                     ),
                   );
@@ -102,7 +102,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
             children: [
               // Header
               const Text(
-                'SkillVerse Community',
+                'MotionMind community',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 26,
@@ -111,7 +111,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
               ),
               const SizedBox(height: 4),
               const Text(
-                'Collaborate with senior engineers & AI researchers',
+                'Share practical ideas and encouragement with other movers',
                 style: TextStyle(color: AppColors.textMuted, fontSize: 14),
               ),
               const SizedBox(height: 20),

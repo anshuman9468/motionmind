@@ -41,7 +41,6 @@ class _PracticePageState extends State<PracticePage>
   Timer? _sessionTimer;
   final String _sessionId = 'session_${DateTime.now().millisecondsSinceEpoch}';
   int? _practiceScore;
-  double? _onDeviceQualityScore;
 
   // Mode toggles
   bool _isGhostModeEnabled = false;
@@ -54,12 +53,11 @@ class _PracticePageState extends State<PracticePage>
   HumanTrackingPayload _currentTrackingPayload = HumanTrackingPayload.empty();
   late SkillBiomechanicsProfile _currentBiomechanicsProfile;
   late ExerciseDefinition _exercise;
-  int _currentPhaseIndex = 0;
+  final int _currentPhaseIndex = 0;
   bool _isPoseFrameProcessing = false;
   bool _onDeviceTrackingReady = false;
   DateTime _nextPoseFrameAt = DateTime.fromMillisecondsSinceEpoch(0);
   String? _onDevicePoseError;
-  int _cameraFramesSeen = 0;
   int _poseFramesProcessed = 0;
   int _validFrames = 0;
   int _rejectedFrames = 0;
@@ -76,7 +74,6 @@ class _PracticePageState extends State<PracticePage>
   bool _coachRequestInFlight = false;
   String? _lastCoachFindingsKey;
   double? _lastBackendLatencyMs;
-  int? _backendResultTimestampUs;
   final SquatTemporalTracker _temporalTracker = SquatTemporalTracker();
   SquatTemporalResult _temporalResult = const SquatTemporalResult.initial();
   late ExerciseTemporalTracker _exerciseTemporalTracker;
@@ -155,7 +152,7 @@ class _PracticePageState extends State<PracticePage>
         setState(() {
           _isCameraInitialized = false;
           _cameraError = isPermission
-              ? 'Camera permission denied.\nPlease enable Camera in Settings > SkillVerse AI.'
+              ? 'Camera permission denied.\nEnable camera access in your phone settings and try again.'
               : 'Camera error: $e';
         });
       }
@@ -222,7 +219,7 @@ class _PracticePageState extends State<PracticePage>
     if (defaultTargetPlatform != TargetPlatform.android) {
       if (mounted) {
         setState(
-          () => _onDevicePoseError = 'On-device pose tracking is Android-only.',
+          () => _onDevicePoseError = 'Movement tracking is available on Android.',
         );
       }
       return;
@@ -238,13 +235,13 @@ class _PracticePageState extends State<PracticePage>
       }
     } catch (error) {
       _resetTemporalAfterInterruption(
-        'ON-DEVICE POSE INFERENCE FAILED. REPOSITION AND TRY AGAIN.',
+        'Movement tracking could not start. Reposition and try again.',
       );
       if (mounted) {
         setState(() {
           _onDeviceTrackingReady = false;
-          _onDevicePoseError = 'Could not start on-device pose model.';
-          _backendStatus = 'On-device pose unavailable';
+          _onDevicePoseError = 'Movement tracking could not start.';
+          _backendStatus = 'Movement tracking unavailable';
         });
       }
       debugPrint('MediaPipe initialization failed: $error');
@@ -267,7 +264,7 @@ class _PracticePageState extends State<PracticePage>
       await controller.startImageStream(_submitPoseFrame);
     } catch (error) {
       _resetTemporalAfterInterruption(
-        'ON-DEVICE POSE INFERENCE FAILED. REPOSITION AND TRY AGAIN.',
+        'Movement tracking could not start. Reposition and try again.',
       );
       if (mounted) {
         setState(() => _onDevicePoseError = 'Could not read camera frames.');
@@ -277,7 +274,6 @@ class _PracticePageState extends State<PracticePage>
   }
 
   void _submitPoseFrame(CameraImage image) {
-    _cameraFramesSeen++;
     if (!mounted ||
         _isPaused ||
         _isReplayModeEnabled ||
@@ -341,8 +337,8 @@ class _PracticePageState extends State<PracticePage>
     } catch (error) {
       if (mounted) {
         setState(() {
-          _onDevicePoseError = 'On-device pose inference failed.';
-          _backendStatus = 'On-device pose unavailable';
+          _onDevicePoseError = 'Movement tracking failed.';
+          _backendStatus = 'Movement tracking unavailable';
         });
       }
       if (error is PlatformException && error.code == 'MODELS_NOT_READY') {
@@ -350,7 +346,7 @@ class _PracticePageState extends State<PracticePage>
         await _initializeOnDeviceTracking();
       }
       _resetTemporalAfterInterruption(
-        'ON-DEVICE POSE INFERENCE FAILED. REPOSITION AND TRY AGAIN.',
+        'Movement tracking failed. Reposition and try again.',
       );
       debugPrint('MediaPipe frame inference failed: $error');
     } finally {
@@ -382,7 +378,6 @@ class _PracticePageState extends State<PracticePage>
       _latestPayloadTimestampUs = payload.timestampUs;
       if (squatResult != null) _temporalResult = squatResult;
       if (exerciseResult != null) _exerciseTemporalResult = exerciseResult;
-      _onDeviceQualityScore = payload.onDeviceQualityScore;
       _onDevicePoseError = null;
       // Keep the last accepted backend sample while the next request is in
       // flight. Clearing it on every camera frame made a normal 8 FPS stream
@@ -392,9 +387,8 @@ class _PracticePageState extends State<PracticePage>
         _backendPerformance = null;
         _backendBiomechanics = null;
         _practiceScore = null;
-        _backendResultTimestampUs = null;
       }
-      if (_backendStatus == 'On-device pose unavailable') {
+      if (_backendStatus == 'Movement tracking unavailable') {
         _backendStatus = 'Waiting for backend';
       }
     });
@@ -473,7 +467,6 @@ class _PracticePageState extends State<PracticePage>
               'Online • ${vision.status} • ${vision.detectedJointsCount} landmarks'
               '$temporalSummary';
           _lastBackendLatencyMs = stopwatch.elapsedMicroseconds / 1000.0;
-          _backendResultTimestampUs = payload.timestampUs;
         });
         if (gatedPerformance != null) {
           unawaited(_requestVerifiedCoach(gatedPerformance, biomechanics));
@@ -601,11 +594,9 @@ class _PracticePageState extends State<PracticePage>
       _latestPayloadTimestampUs = null;
       _temporalResult = temporalResult;
       _exerciseTemporalResult = exerciseResult;
-      _onDeviceQualityScore = null;
       _backendPerformance = null;
       _backendBiomechanics = null;
       _practiceScore = null;
-      _backendResultTimestampUs = null;
       _backendStatus = 'Tracking lost';
     });
   }
@@ -664,8 +655,8 @@ class _PracticePageState extends State<PracticePage>
               const SizedBox(height: 8),
               Text(
                 _activeRepetitionCount > 0
-                    ? 'Verified ${_exercise.name.toLowerCase()} movement telemetry recorded for this session.'
-                    : 'Session ended without a verified ${_exercise.name.toLowerCase()} repetition.',
+                    ? 'Your verified ${_exercise.name.toLowerCase()} practice is ready to review.'
+                    : 'No complete ${_exercise.name.toLowerCase()} repetition was verified this time.',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.8),
                   fontSize: 13,
@@ -679,16 +670,16 @@ class _PracticePageState extends State<PracticePage>
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _buildStatSummary(
-                    'XP',
-                    _practiceScore == null ? 'Unavailable' : '$_practiceScore',
+                    'Quality',
+                    _practiceScore == null ? 'Pending' : '$_practiceScore%',
                   ),
                   _buildStatSummary('Reps', '$_activeRepetitionCount'),
-                  _buildStatSummary('Calories', 'Unavailable'),
+                  _buildStatSummary('Duration', _formatDuration(_secondsElapsed)),
                 ],
               ),
               const SizedBox(height: 24),
               GradientButton(
-                text: 'Collect Blessings',
+                text: 'Done',
                 onPressed: () {
                   Navigator.pop(context);
                   Navigator.pop(context);
@@ -783,11 +774,82 @@ class _PracticePageState extends State<PracticePage>
     return _activeTemporalMessage;
   }
 
-  String get _backendSampleAgeLabel {
-    final latest = _latestPayloadTimestampUs;
-    final sampled = _backendResultTimestampUs;
-    if (latest == null || sampled == null || latest < sampled) return '—';
-    return '${((latest - sampled) / 1000).round()} ms old';
+  void _showDeveloperDiagnostics() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              const Text(
+                'Developer diagnostics',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Technical details are kept here so the practice view stays clear.',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+              _diagnosticRow('Backend', _backendStatus),
+              _diagnosticRow(
+                'Backend latency',
+                _lastBackendLatencyMs == null
+                    ? '—'
+                    : '${_lastBackendLatencyMs!.toStringAsFixed(0)} ms',
+              ),
+              _diagnosticRow(
+                'Pose processing',
+                _lastPoseInferenceMs == null
+                    ? '—'
+                    : '${_lastPoseInferenceMs!.toStringAsFixed(0)} ms',
+              ),
+              _diagnosticRow(
+                'Frames accepted',
+                '$_validFrames / $_poseFramesProcessed',
+              ),
+              _diagnosticRow(
+                'Overlay mode',
+                _overlayMode.name,
+              ),
+              if (_onDevicePoseError != null)
+                _diagnosticRow('Camera tracking', _onDevicePoseError!),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _diagnosticRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label, style: const TextStyle(color: AppColors.textMuted)),
+          ),
+          Flexible(
+            child: Text(
+              value,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.right,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildStatSummary(String label, String val) {
@@ -878,7 +940,7 @@ class _PracticePageState extends State<PracticePage>
                                 _cameraError ??
                                     (_isReplayModeEnabled
                                         ? 'Replay Analytics Mode'
-                                        : 'Waiting for on-device pose model…'),
+                                        : 'Preparing movement tracking…'),
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: _cameraError != null
@@ -1017,26 +1079,40 @@ class _PracticePageState extends State<PracticePage>
                         size: 24,
                       ),
                     ),
-                    PopupMenuButton<PoseOverlayMode>(
+                    PopupMenuButton<String>(
                       tooltip: 'Pose overlay mode',
                       icon: const Icon(
                         Icons.layers_outlined,
                         color: Colors.white,
                         size: 21,
                       ),
-                      onSelected: (mode) => setState(() => _overlayMode = mode),
+                      onSelected: (mode) {
+                        if (mode == 'diagnostics') {
+                          _showDeveloperDiagnostics();
+                        } else {
+                          setState(
+                            () => _overlayMode = PoseOverlayMode.values.firstWhere(
+                              (value) => value.name == mode,
+                            ),
+                          );
+                        }
+                      },
                       itemBuilder: (context) => const [
                         PopupMenuItem(
-                          value: PoseOverlayMode.off,
-                          child: Text('Overlay off'),
+                          value: 'off',
+                          child: Text('Overlay: off'),
                         ),
                         PopupMenuItem(
-                          value: PoseOverlayMode.minimal,
-                          child: Text('Minimal guidance'),
+                          value: 'minimal',
+                          child: Text('Overlay: minimal'),
                         ),
                         PopupMenuItem(
-                          value: PoseOverlayMode.fullSkeleton,
-                          child: Text('Full skeleton'),
+                          value: 'fullSkeleton',
+                          child: Text('Overlay: full'),
+                        ),
+                        PopupMenuItem(
+                          value: 'diagnostics',
+                          child: Text('Developer diagnostics'),
                         ),
                       ],
                     ),
@@ -1071,7 +1147,7 @@ class _PracticePageState extends State<PracticePage>
                       child: _buildHudTile(
                         Icons.auto_awesome_rounded,
                         _backendPerformance?.qualityScore == null
-                            ? 'Unavailable'
+                            ? 'Pending'
                             : '${_backendPerformance!.qualityScore!.toInt()}%',
                         'Quality',
                       ),
@@ -1079,57 +1155,8 @@ class _PracticePageState extends State<PracticePage>
                   ],
                 ),
                 const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        'Backend: $_backendStatus',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          color:
-                              _backendStatus.startsWith('Online') ||
-                                  _backendStatus == 'Saved to backend'
-                              ? AppColors.emeraldGreen
-                              : AppColors.textMuted,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (_lastBackendLatencyMs != null)
-                        Text(
-                          'API ${_lastBackendLatencyMs!.toStringAsFixed(0)} ms • pose ${_lastPoseInferenceMs?.toStringAsFixed(0) ?? '—'} ms • stream ${_poseFramesProcessed}/${_cameraFramesSeen} • sample ${_backendSampleAgeLabel}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 9,
-                          ),
-                        ),
-                      if (_onDeviceQualityScore != null)
-                        Text(
-                          'On-device signal (not technique score): ${_onDeviceQualityScore!.toStringAsFixed(1)}/100',
-                          style: const TextStyle(
-                            color: AppColors.cyanGlow,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      if (_onDevicePoseError != null)
-                        Text(
-                          _onDevicePoseError!,
-                          style: const TextStyle(
-                            color: AppColors.roseError,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
+                // Backend latency and model diagnostics are available from
+                // the layers menu, not in the consumer practice HUD.
               ],
             ),
           ),
@@ -1140,7 +1167,7 @@ class _PracticePageState extends State<PracticePage>
             right: 10,
             bottom: MediaQuery.of(context).padding.bottom + 160,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 220),
+              constraints: const BoxConstraints(maxHeight: 190),
               child: SingleChildScrollView(
                 child: BiomechanicalHudPanel(
                   profile: _currentBiomechanicsProfile,
@@ -1167,7 +1194,7 @@ class _PracticePageState extends State<PracticePage>
                   children: [
                     Expanded(
                       child: _buildFeatureButton(
-                        'Ghost Stance',
+                        'Pose guide',
                         Icons.copy_rounded,
                         _isGhostModeEnabled,
                         () {
@@ -1181,7 +1208,7 @@ class _PracticePageState extends State<PracticePage>
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildFeatureButton(
-                        'Replay Heatmap',
+                        'Replay',
                         Icons.history_rounded,
                         _isReplayModeEnabled,
                         () {
@@ -1210,7 +1237,7 @@ class _PracticePageState extends State<PracticePage>
                     const SizedBox(width: 12),
                     Expanded(
                       child: GradientButton(
-                        text: 'Finish Stance',
+                        text: 'Finish session',
                         icon: Icons.stop_rounded,
                         onPressed: _finishSession,
                       ),
@@ -1255,10 +1282,10 @@ class _PracticePageState extends State<PracticePage>
           const SizedBox(width: 6),
           Text(
             !detected
-                ? 'SEARCHING FOR HUMAN'
+                ? 'Move into frame'
                 : (evaluationReady
-                      ? 'POSE • $_activePhaseLabel'
-                      : 'POSE • TRACKING PAUSED'),
+                      ? 'Tracking • $_activePhaseLabel'
+                      : 'Adjust your position'),
             style: TextStyle(
               color: indicatorColor,
               fontSize: 10,

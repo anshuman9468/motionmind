@@ -38,7 +38,7 @@ class BiomechanicalHudPanel extends StatelessWidget {
       case BiomechanicsEvaluationStatus.trackingLost:
         return 'TRACKING PAUSED';
       case BiomechanicsEvaluationStatus.valid:
-        return 'TRACKING ONLY';
+        return 'ASSESSMENT PENDING';
     }
   }
 
@@ -145,9 +145,9 @@ class BiomechanicalHudPanel extends StatelessWidget {
               child: Text(
                 score == null
                     ? (evaluation.status == BiomechanicsEvaluationStatus.valid
-                          ? 'TRACKING ONLY'
+                    ? 'ASSESSMENT PENDING'
                           : _statusLabel(evaluation.status))
-                    : '${score.toInt()}% HEURISTIC QUALITY',
+                    : '${score.toInt()}% MOVEMENT QUALITY',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(

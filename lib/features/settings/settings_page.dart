@@ -18,7 +18,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _showApiKeyDialog() {
     final keyController = TextEditingController(
-      text: 'sk-proj-7819203940129384',
+      text: '',
     );
     showDialog(
       context: context,
@@ -30,7 +30,7 @@ class _SettingsPageState extends State<SettingsPage> {
             side: const BorderSide(color: AppColors.glassBorder),
           ),
           title: const Text(
-            'AI LLM Engine Keys',
+            'Coach connection',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           content: Column(
@@ -44,7 +44,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Keys are encrypted via iOS Keychain / Android Keystore.',
+                'Optional provider keys stay on this device. Leave this blank to use rule-based feedback.',
                 style: TextStyle(color: AppColors.textMuted, fontSize: 12),
               ),
             ],
@@ -92,7 +92,7 @@ class _SettingsPageState extends State<SettingsPage> {
           padding: const EdgeInsets.all(20.0),
           children: [
             // AI Telemetry Section
-            const _SectionTitle(title: 'AI TELEMETRY & DIGITAL TWIN'),
+            const _SectionTitle(title: 'COACHING & PRIVACY'),
             const SizedBox(height: 8),
             GlassContainer(
               padding: const EdgeInsets.all(12),
@@ -103,7 +103,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: SwitchListTile(
                       activeThumbColor: AppColors.cyanGlow,
                       title: const Text(
-                        'Auto-Sync Digital Twin',
+                        'Save practice insights',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 14,
@@ -111,7 +111,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
                       subtitle: const Text(
-                        'Continuously recalculate skill vector from practice scores',
+                        'Keep your movement findings available for future sessions',
                         style: TextStyle(
                           color: AppColors.textMuted,
                           fontSize: 12,
@@ -129,7 +129,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         color: AppColors.cyanGlow,
                       ),
                       title: const Text(
-                        'Manage Custom LLM API Keys',
+                        'Optional coach connection',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 14,
@@ -137,7 +137,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
                       subtitle: const Text(
-                        'Connect BYOK endpoints (OpenAI / Anthropic / Ollama)',
+                        'Add a provider key only if you want hosted coach explanations',
                         style: TextStyle(
                           color: AppColors.textMuted,
                           fontSize: 12,
@@ -169,7 +169,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: SwitchListTile(
                       activeThumbColor: AppColors.cyanGlow,
                       title: const Text(
-                        'Push Telemetry Alerts',
+                        'Practice reminders',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 14,
@@ -177,7 +177,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
                       subtitle: const Text(
-                        'Daily streak reminders and AI Mentor recommendations',
+                        'Get reminders to return to your training routine',
                         style: TextStyle(
                           color: AppColors.textMuted,
                           fontSize: 12,
@@ -193,7 +193,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: SwitchListTile(
                       activeThumbColor: AppColors.cyanGlow,
                       title: const Text(
-                        'Spatial Haptic Feedback',
+                        'Touch feedback',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 14,
@@ -201,7 +201,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
                       subtitle: const Text(
-                        'Vibrate on quiz completion and ripple taps',
+                        'Use small vibrations for important actions',
                         style: TextStyle(
                           color: AppColors.textMuted,
                           fontSize: 12,
@@ -229,7 +229,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'SkillVerse AI Version',
+                        'MotionMind version',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -248,7 +248,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   SizedBox(height: 6),
                   Text(
-                    'Built with Flutter 3.24, Riverpod, and GoRouter.',
+                    'Movement coaching for sports and gym practice.',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                   ),
                 ],

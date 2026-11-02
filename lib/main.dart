@@ -5,16 +5,16 @@ import 'core/router/app_router.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ProviderScope(child: SkillVerseApp()));
+  runApp(const ProviderScope(child: MotionMindApp()));
 }
 
-class SkillVerseApp extends StatelessWidget {
-  const SkillVerseApp({super.key});
+class MotionMindApp extends StatelessWidget {
+  const MotionMindApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'SkillVerse AI',
+      title: 'MotionMind',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
       darkTheme: AppTheme.darkTheme,

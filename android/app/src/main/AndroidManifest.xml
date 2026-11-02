@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Development-only FastAPI HTTP over adb reverse or local Wi-Fi. -->
     <application
-        android:label="skillverse_ai"
+        android:label="MotionMind"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">

@@ -17,11 +17,9 @@ class MainNavigationShell extends StatelessWidget {
       case 2:
         return 2;
       case 3:
-        return 3; // /practice is branch 3, maps to bottom tab 3 (Live Camera)
-      case 4:
-        return 4; // /digital-twin is branch 4, maps to bottom tab 4 (Oracle)
+        return 3; // /practice is the Practice tab.
       case 8:
-        return 5; // /profile is branch 8, maps to bottom tab 5 (Hero Profile)
+        return 4; // /profile is the Profile tab.
       default:
         return -1;
     }
@@ -36,11 +34,9 @@ class MainNavigationShell extends StatelessWidget {
       case 2:
         return 2;
       case 3:
-        return 3; // bottom tab 3 (Live Camera) maps to branch 3 (/practice)
+        return 3; // Practice.
       case 4:
-        return 4; // bottom tab 4 (Oracle) maps to branch 4 (/digital-twin)
-      case 5:
-        return 8; // bottom tab 5 (Hero Profile) maps to branch 8 (/profile)
+        return 8; // Profile.
       default:
         return 0;
     }
@@ -61,36 +57,30 @@ class MainNavigationShell extends StatelessWidget {
       _NavItem(
         icon: Icons.account_balance_outlined,
         activeIcon: Icons.account_balance_rounded,
-        label: 'Pantheon',
+        label: 'Home',
         route: '/',
       ),
       _NavItem(
-        icon: Icons.toll_outlined,
-        activeIcon: Icons.toll_rounded,
-        label: 'Agora',
+        icon: Icons.explore_outlined,
+        activeIcon: Icons.explore_rounded,
+        label: 'Explore',
         route: '/marketplace',
       ),
       _NavItem(
-        icon: Icons.auto_awesome_outlined,
-        activeIcon: Icons.auto_awesome_rounded,
-        label: 'Athena AI',
+        icon: Icons.chat_bubble_outline_rounded,
+        activeIcon: Icons.chat_bubble_rounded,
+        label: 'Coach',
         route: '/ai-coach',
       ),
       _NavItem(
         icon: Icons.videocam_outlined,
         activeIcon: Icons.videocam_rounded,
-        label: 'Live Camera',
+        label: 'Practice',
         route: '/practice',
       ),
       _NavItem(
-        icon: Icons.remove_red_eye_outlined,
-        activeIcon: Icons.remove_red_eye_rounded,
-        label: 'Oracle',
-        route: '/digital-twin',
-      ),
-      _NavItem(
-        icon: Icons.shield_outlined,
-        activeIcon: Icons.shield_rounded,
+        icon: Icons.person_outline_rounded,
+        activeIcon: Icons.person_rounded,
         label: 'Profile',
         route: '/profile',
       ),
@@ -100,37 +90,19 @@ class MainNavigationShell extends StatelessWidget {
       _NavItem(
         icon: Icons.bolt_rounded,
         activeIcon: Icons.bolt_rounded,
-        label: 'Hercules Arena',
+        label: 'Practice',
         route: '/practice',
       ),
       _NavItem(
         icon: Icons.query_stats_rounded,
         activeIcon: Icons.query_stats_rounded,
-        label: 'Atlas Analytics',
+        label: 'Progress',
         route: '/dashboard',
       ),
       _NavItem(
-        icon: Icons.groups_3_rounded,
-        activeIcon: Icons.groups_3_rounded,
-        label: 'Agora Forums',
-        route: '/community',
-      ),
-      _NavItem(
-        icon: Icons.emoji_events_rounded,
-        activeIcon: Icons.emoji_events_rounded,
-        label: 'Olympus Standings',
-        route: '/leaderboard',
-      ),
-      _NavItem(
-        icon: Icons.workspace_premium_rounded,
-        activeIcon: Icons.workspace_premium_rounded,
-        label: 'Laurel Blessings',
-        route: '/achievements',
-      ),
-      _NavItem(
-        icon: Icons.handyman_rounded,
-        activeIcon: Icons.handyman_rounded,
-        label: 'Hephaestus Forge',
+        icon: Icons.tune_rounded,
+        activeIcon: Icons.tune_rounded,
+        label: 'Settings',
         route: '/settings',
       ),
     ];
@@ -165,7 +137,7 @@ class MainNavigationShell extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'SkillVerse AI',
+                          'MotionMind',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 18,
@@ -173,7 +145,7 @@ class MainNavigationShell extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          'Mobile Telemetry Engine',
+                          'Train smarter. Move better.',
                           style: TextStyle(
                             color: AppColors.textMuted,
                             fontSize: 11,

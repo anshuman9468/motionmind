@@ -33,15 +33,15 @@ final databaseServiceProvider = Provider<DatabaseService>((ref) {
 // Onboarding Details State Provider
 final onboardingDetailsProvider = StateProvider<Map<String, dynamic>>(
   (ref) => {
-    'name': 'Alex Vance',
+    'name': 'Your name',
     'age': 25,
     'gender': 'Male',
     'height': 175.0,
     'weight': 70.0,
     'dominantHand': 'Right',
-    'learningGoal': 'Gold Wreath Olympian',
-    'preferredSkills': ['Olympic Lifting', 'Core Kinematics'],
-    'availableEquipment': ['Olympic Barbell', 'Postural Sensor Grid'],
+    'learningGoal': 'Move with confidence',
+    'preferredSkills': ['Strength training', 'Athletic movement'],
+    'availableEquipment': ['Training space'],
     'experienceLevel': 'Intermediate',
     'practiceFrequency': 'Daily',
   },
@@ -58,9 +58,9 @@ class UserNotifier extends StateNotifier<UserModel> {
         const UserModel(
           id: 'usr_99',
           name: 'Alex Vance',
-          email: 'alex.vance@skillverse.ai',
+          email: 'you@example.com',
           avatarUrl: 'https://i.pravatar.cc/300?img=11',
-          title: 'Senior AI Systems Architect',
+          title: 'MotionMind member',
           level: 42,
           xp: 18450,
           nextLevelXp: 20000,
@@ -118,7 +118,7 @@ class SkillsNotifier extends StateNotifier<List<SkillModel>> {
     : super([
         const SkillModel(
           id: 'sk_1',
-          title: 'Zeus Bolt: High-Output Basketball Telemetry',
+          title: 'Basketball shooting fundamentals',
           category: 'Sports',
           level: 'Master',
           rating: 4.95,
@@ -126,12 +126,12 @@ class SkillsNotifier extends StateNotifier<List<SkillModel>> {
           communityRating: 4.92,
           learnersCount: 18500,
           duration: '14h 30m',
-          instructor: 'Zeus (Thunder God)',
+          instructor: 'MotionMind coaching',
           description:
-              'Achieve god-like vertical leap, court vision, and shot mechanical telemetry precision.',
+              'Practice a balanced setup, controlled extension, and landing position.',
           imageUrl: 'https://images.unsplash.com/photo-1546519638-68e109498ffc',
           keyTakeaways: [
-            'Biomechanical jump telemetry calibration',
+            'Shooting-arm alignment',
             'Optimal trajectory physics training',
             'No-look court spatial modeling',
           ],
@@ -182,7 +182,7 @@ class SkillsNotifier extends StateNotifier<List<SkillModel>> {
           imageUrl: 'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed',
           keyTakeaways: [
             'Kinetics kinetic chain mapping',
-            'Reactive slip-defense telemetry',
+            'Guard and recovery footwork',
             'Peak impact force optimization',
           ],
           popularity: 'Legendary',
@@ -203,7 +203,7 @@ class SkillsNotifier extends StateNotifier<List<SkillModel>> {
           duration: '22h 10m',
           instructor: 'Hephaestus (Forge God)',
           description:
-              'Align lift kinematics, optimize squat depth telemetry, and master deadlift postures.',
+              'Build strength with controlled squat depth and safe visible form.',
           imageUrl:
               'https://images.unsplash.com/photo-1517838277536-f5f99be501cd',
           keyTakeaways: [
@@ -258,7 +258,7 @@ class SkillsNotifier extends StateNotifier<List<SkillModel>> {
           keyTakeaways: [
             'Vagal tone heart variability control',
             'Spine alignment biomechanics',
-            'Pranayama oxygenation telemetry',
+            'Breathing and body control',
           ],
           popularity: 'Hot',
           coachesAvailable: 3,
@@ -290,7 +290,7 @@ class SkillsNotifier extends StateNotifier<List<SkillModel>> {
         ),
         const SkillModel(
           id: 'sk_8',
-          title: 'Demeter Harvest: Michelin Culinary Telemetry',
+          title: 'Movement and mobility basics',
           category: 'Cooking',
           level: 'Novice',
           rating: 4.89,
@@ -313,7 +313,7 @@ class SkillsNotifier extends StateNotifier<List<SkillModel>> {
         ),
         const SkillModel(
           id: 'sk_9',
-          title: 'Athena Art: Volumetric Painting & Sketching',
+          title: 'Mobility and body awareness',
           category: 'Painting',
           level: 'Intermediate',
           rating: 4.94,
@@ -321,7 +321,7 @@ class SkillsNotifier extends StateNotifier<List<SkillModel>> {
           communityRating: 4.92,
           learnersCount: 8800,
           duration: '12h 40m',
-          instructor: 'Athena (Goddess of Wisdom)',
+          instructor: 'MotionMind coaching',
           description:
               'Calibrate light values, depth shaders, and canvas composition ratios.',
           imageUrl:
@@ -398,12 +398,12 @@ class AiCoachChatNotifier extends StateNotifier<List<ChatMessage>> {
           id: 'm1',
           sender: 'ai',
           content:
-              'Greetings, Hero! I am Hercules AI, your divine mentor & digital twin guide. Based on your active telemetry, you are progressing toward the strength of the Gods. What trial shall we conquer today?',
+              'Complete a practice session and I will help you understand the movement findings that MotionMind can verify. What would you like to work on?',
           timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
           suggestedActions: [
-            'Simulate LLM Quantization Quiz',
-            'Analyze My Digital Twin Gap',
-            'Generate Code Review Challenge',
+            'How should I set up my camera?',
+            'How can I improve my squat?',
+            'What can MotionMind measure?',
           ],
         ),
       ]);
@@ -423,12 +423,12 @@ class AiCoachChatNotifier extends StateNotifier<List<ChatMessage>> {
         id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
         sender: 'ai',
         content:
-            'Analyzing request: "$text"...\n\nYour Digital Twin model indicates strong proficiency in System Architecture. I recommend attempting the **LLM Quantization Practice Simulator** to boost your execution speed index by +4.2 points!',
-        timestamp: DateTime.now(),
-        suggestedActions: [
-          'Launch Practice Simulator',
-          'View Skill Radar Matrix',
-          'Ask another question',
+            'I can help with "$text". Start a MotionMind practice session so any technique guidance can be grounded in movement data from your camera.',
+          timestamp: DateTime.now(),
+          suggestedActions: [
+            'Start a practice session',
+            'Show camera setup tips',
+            'Ask another question',
         ],
       );
       state = [...state, aiReply];
@@ -544,7 +544,7 @@ final achievementsProvider = Provider<List<AchievementModel>>((ref) {
     AchievementModel(
       id: 'ac_3',
       title: 'Unstoppable Streak',
-      description: 'Maintain a 14-day learning streak in SkillVerse',
+      description: 'Return regularly to build a consistent training routine',
       icon: Icons.local_fire_department_rounded,
       color: Colors.amber,
       progress: 1.0,

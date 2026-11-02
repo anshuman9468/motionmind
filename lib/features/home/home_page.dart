@@ -1,574 +1,304 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_container.dart';
-import '../../core/widgets/section_header.dart';
-import '../../core/widgets/stat_card.dart';
-import '../../core/widgets/skill_badge.dart';
+import '../../core/widgets/gradient_button.dart';
 import '../providers/app_providers.dart';
 
+/// The first screen a new user sees. It intentionally shows only data that
+/// MotionMind can currently support; session history is not simulated.
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(userProvider);
-    final skills = ref.watch(skillsProvider);
-    final enrolledSkills = skills.where((s) => s.isEnrolled).toList();
+    final firstName = user.name.trim().split(' ').first;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Mobile Top Header Bar
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        // Drawer menu button for mobile
-                        IconButton(
-                          onPressed: () => Scaffold.of(context).openDrawer(),
-                          icon: const Icon(
-                            Icons.menu_rounded,
-                            color: Colors.white,
-                            size: 26,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        // Glowing User Avatar
-                        Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: AppColors.primaryGradient,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.cyanGlow.withValues(
-                                  alpha: 0.3,
-                                ),
-                                blurRadius: 10,
-                              ),
-                            ],
-                          ),
-                          child: CircleAvatar(
-                            radius: 20,
-                            backgroundImage: NetworkImage(user.avatarUrl),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      user.name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Icon(
-                                    Icons.verified_rounded,
-                                    color: AppColors.cyanGlow,
-                                    size: 16,
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                user.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AppColors.textMuted,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _Header(
+                    firstName: firstName,
+                    onMenu: () => Scaffold.of(context).openDrawer(),
+                    onSettings: () => context.push('/settings'),
+                  ),
+                  const SizedBox(height: 28),
+                  Text(
+                    'Welcome to MotionMind',
+                    style: Theme.of(context).textTheme.displayMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Your next great session starts here.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 16,
+                      height: 1.4,
                     ),
                   ),
+                  const SizedBox(height: 24),
+                  GradientButton(
+                    width: double.infinity,
+                    text: 'Start practice',
+                    icon: Icons.play_arrow_rounded,
+                    onPressed: () => context.push('/practice'),
+                  ),
+                  const SizedBox(height: 22),
+                  const _SectionHeading(
+                    title: 'Your progress',
+                    subtitle: 'Your real session insights will appear here.',
+                  ),
+                  const SizedBox(height: 10),
+                  const _EmptyProgressCard(),
+                  const SizedBox(height: 24),
+                  const _SectionHeading(
+                    title: 'Explore movement',
+                    subtitle: 'Choose a sport or workout to get started.',
+                  ),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
-                      // Streak Flame Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Colors.amber.withValues(alpha: 0.4),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.local_fire_department_rounded,
-                              color: Colors.amber,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${user.streakDays}d',
-                              style: const TextStyle(
-                                color: Colors.amber,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
+                      Expanded(
+                        child: _ExploreCard(
+                          icon: Icons.sports_basketball_rounded,
+                          title: 'Sports',
+                          subtitle: 'Technique and athletic movement',
+                          onTap: () => context.go('/marketplace'),
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      IconButton(
-                        onPressed: () => context.push('/settings'),
-                        icon: const Icon(
-                          Icons.notifications_outlined,
-                          color: Colors.white,
-                          size: 22,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _ExploreCard(
+                          icon: Icons.fitness_center_rounded,
+                          title: 'Gym',
+                          subtitle: 'Form, control, and repetitions',
+                          onTap: () => context.push('/practice'),
                         ),
                       ),
                     ],
                   ),
-                ],
-              ).animate().fadeIn(duration: 400.ms),
-
-              const SizedBox(height: 20),
-
-              // Hero Live Camera Feed Action Card
-              GlassContainer(
-                onTap: () => context.push('/practice'),
-                padding: const EdgeInsets.all(16),
-                backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.20),
-                borderColor: AppColors.cyanGlow.withValues(alpha: 0.5),
-                hasGlow: true,
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        gradient: AppColors.primaryGradient,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.cyanGlow.withValues(alpha: 0.4),
-                            blurRadius: 16,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.videocam_rounded,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'LIVE CAMERA SCANNER',
-                            style: TextStyle(
-                              color: AppColors.cyanGlow,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Launch Camera Telemetry',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            'Real-time MediaPipe AI pose & gesture analysis',
+                  const SizedBox(height: 24),
+                  GlassContainer(
+                    padding: const EdgeInsets.all(18),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.info_outline_rounded,
+                          color: AppColors.primaryBlue,
+                          size: 22,
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'MotionMind gives feedback only when your camera view and movement data are clear enough to assess.',
                             style: TextStyle(
                               color: AppColors.textSecondary,
-                              fontSize: 12,
+                              fontSize: 13,
+                              height: 1.45,
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      color: AppColors.cyanGlow,
-                      size: 16,
-                    ),
-                  ],
-                ),
-              ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.2, end: 0),
-
-              const SizedBox(height: 16),
-
-              // Level & XP Progress Card
-              GlassContainer(
-                hasGlow: true,
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SkillBadge(
-                                label: 'LVL 42',
-                                color: AppColors.cyanGlow,
-                              ),
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: Text(
-                                  '${user.xp} / ${user.nextLevelXp} XP',
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: AppColors.textPrimary,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Text(
-                          'Top 0.6% Global',
-                          style: TextStyle(
-                            color: AppColors.emeraldGreen,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: LinearProgressIndicator(
-                        value: user.xp / user.nextLevelXp,
-                        minHeight: 8,
-                        backgroundColor: AppColors.surface,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          AppColors.cyanGlow,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // AI Coach Recommendation Hero Banner
-              GlassContainer(
-                backgroundColor: AppColors.primaryPurple.withValues(
-                  alpha: 0.15,
-                ),
-                borderColor: AppColors.primaryPurple.withValues(alpha: 0.4),
-                padding: const EdgeInsets.all(18),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        gradient: AppColors.primaryGradient,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        Icons.psychology_rounded,
-                        color: Colors.white,
-                        size: 26,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'AI Twin Telemetry Alert',
-                            style: TextStyle(
-                              color: AppColors.cyanGlow,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 11,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'Simulate LLM Quantization Practice Room to boost your execution index +4.2 points.',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          InkWell(
-                            onTap: () => context.push('/practice'),
-                            child: const Row(
-                              children: [
-                                Text(
-                                  'Launch Simulator',
-                                  style: TextStyle(
-                                    color: AppColors.cyanGlow,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                SizedBox(width: 4),
-                                Icon(
-                                  Icons.arrow_forward_rounded,
-                                  color: AppColors.cyanGlow,
-                                  size: 14,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ).animate().fadeIn(delay: 200.ms),
-
-              const SizedBox(height: 24),
-
-              // Stats Row
-              Row(
-                children: const [
-                  Expanded(
-                    child: StatCard(
-                      title: 'Skills Mastered',
-                      value: '18',
-                      trend: '+3 this month',
-                      isPositive: true,
-                      icon: Icons.workspace_premium_rounded,
-                      iconColor: AppColors.cyanGlow,
-                    ),
                   ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: StatCard(
-                      title: 'Digital Twin Index',
-                      value: '94.8',
-                      trend: '+2.4%',
-                      isPositive: true,
-                      icon: Icons.radar_rounded,
-                      iconColor: AppColors.primaryPurple,
-                    ),
-                  ),
-                ],
+                ]),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-              const SizedBox(height: 24),
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.firstName,
+    required this.onMenu,
+    required this.onSettings,
+  });
 
-              // Enrolled Active Courses Section
-              SectionHeader(
-                title: 'Active Skill Tracks',
-                subtitle: 'Continue your learning modules',
-                actionText: 'Market',
-                onActionTap: () => context.go('/marketplace'),
-              ),
-              const SizedBox(height: 10),
+  final String firstName;
+  final VoidCallback onMenu;
+  final VoidCallback onSettings;
 
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: enrolledSkills.length,
-                itemBuilder: (context, index) {
-                  final item = enrolledSkills[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: GlassContainer(
-                      padding: const EdgeInsets.all(14),
-                      child: Row(
-                        children: [
-                          Hero(
-                            tag: 'skill_${item.id}',
-                            child: Container(
-                              width: 54,
-                              height: 54,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                image: DecorationImage(
-                                  image: NetworkImage(item.imageUrl),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SkillBadge(
-                                  label: item.category,
-                                  color: AppColors.primaryBlue,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  item.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: LinearProgressIndicator(
-                                    value: item.progress,
-                                    minHeight: 4,
-                                    backgroundColor: AppColors.surface,
-                                    valueColor:
-                                        const AlwaysStoppedAnimation<Color>(
-                                          AppColors.emeraldGreen,
-                                        ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            onPressed: () => context.push('/practice'),
-                            icon: const Icon(
-                              Icons.play_circle_fill_rounded,
-                              color: AppColors.cyanGlow,
-                              size: 28,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 24),
-
-              // Quick Action Grid
-              SectionHeader(
-                title: 'Quick Telemetry',
-                subtitle: 'Direct shortcuts to AI modules',
-              ),
-              const SizedBox(height: 10),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: GlassContainer(
-                      onTap: () => context.go('/ai-coach'),
-                      padding: const EdgeInsets.all(14),
-                      child: const Column(
-                        children: [
-                          Icon(
-                            Icons.psychology_rounded,
-                            color: AppColors.cyanGlow,
-                            size: 28,
-                          ),
-                          SizedBox(height: 6),
-                          Text(
-                            'AI Coach',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: GlassContainer(
-                      onTap: () => context.go('/digital-twin'),
-                      padding: const EdgeInsets.all(14),
-                      child: const Column(
-                        children: [
-                          Icon(
-                            Icons.radar_rounded,
-                            color: AppColors.primaryPurple,
-                            size: 28,
-                          ),
-                          SizedBox(height: 6),
-                          Text(
-                            'Digital Twin',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: GlassContainer(
-                      onTap: () => context.push('/leaderboard'),
-                      padding: const EdgeInsets.all(14),
-                      child: const Column(
-                        children: [
-                          Icon(
-                            Icons.leaderboard_rounded,
-                            color: Colors.amber,
-                            size: 28,
-                          ),
-                          SizedBox(height: 6),
-                          Text(
-                            'Leaderboard',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        IconButton(
+          onPressed: onMenu,
+          icon: const Icon(Icons.menu_rounded, color: Colors.white),
+          tooltip: 'Open menu',
+        ),
+        const SizedBox(width: 2),
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: AppColors.primaryBlue,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryBlue.withValues(alpha: .22),
+                blurRadius: 14,
               ),
             ],
           ),
+          alignment: Alignment.center,
+          child: Text(
+            firstName.isEmpty ? 'M' : firstName.substring(0, 1).toUpperCase(),
+            style: const TextStyle(
+              color: AppColors.textOnAccent,
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+            ),
+          ),
         ),
+        const SizedBox(width: 10),
+        const Expanded(
+          child: Text(
+            'MotionMind',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+              letterSpacing: .2,
+            ),
+          ),
+        ),
+        IconButton(
+          onPressed: onSettings,
+          icon: const Icon(Icons.tune_rounded, color: AppColors.textSecondary),
+          tooltip: 'Settings',
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 19,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+        ),
+      ],
+    );
+  }
+}
+
+class _EmptyProgressCard extends StatelessWidget {
+  const _EmptyProgressCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassContainer(
+      padding: const EdgeInsets.all(18),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceLight,
+              borderRadius: BorderRadius.circular(AppColors.radiusMedium),
+            ),
+            child: const Icon(
+              Icons.insights_outlined,
+              color: AppColors.primaryBlue,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Text(
+              'Complete your first practice to unlock movement insights and history.',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExploreCard extends StatelessWidget {
+  const _ExploreCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassContainer(
+      onTap: onTap,
+      padding: const EdgeInsets.all(16),
+      borderRadius: AppColors.radiusMedium,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppColors.primaryBlue, size: 28),
+          const SizedBox(height: 14),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            subtitle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 11,
+              height: 1.35,
+            ),
+          ),
+        ],
       ),
     );
   }

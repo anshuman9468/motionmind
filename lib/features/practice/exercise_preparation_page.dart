@@ -20,7 +20,7 @@ class ExercisePreparationPage extends StatelessWidget {
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Prepare your session'),
+        title: const Text('Get ready'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -41,7 +41,7 @@ class ExercisePreparationPage extends StatelessWidget {
                     Icon(exercise.icon, color: Colors.white, size: 42),
                     const SizedBox(height: 22),
                     Text(
-                      exercise.name,
+                      'Ready for ${exercise.name}?',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 28,
@@ -69,7 +69,7 @@ class ExercisePreparationPage extends StatelessWidget {
               _infoCard(
                 Icons.crop_free_rounded,
                 'Frame and view',
-                '${exercise.cameraDistance}\nSupported view: ${exercise.supportedView}.',
+                '${exercise.cameraDistance}\nRecommended angle: ${_viewLabel(exercise.supportedView)}.',
               ),
               _infoCard(
                 Icons.accessibility_new_rounded,
@@ -78,7 +78,7 @@ class ExercisePreparationPage extends StatelessWidget {
               ),
               _infoCard(
                 Icons.insights_rounded,
-                'What MotionMind measures',
+                'What MotionMind can see',
                 '${exercise.measurements.join(' • ')}\n\n${exercise.bodyOnlyNote}',
               ),
               const SizedBox(height: 8),
@@ -94,7 +94,7 @@ class ExercisePreparationPage extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Phases: ${exercise.phases.join('  →  ')}',
+                        'Movement flow\n${exercise.phases.join('  →  ')}',
                         style: const TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 12,
@@ -159,4 +159,10 @@ class ExercisePreparationPage extends StatelessWidget {
       ),
     ),
   );
+
+  String _viewLabel(String view) => switch (view) {
+    'side' => 'side view',
+    'front' => 'front view',
+    _ => 'the supported view',
+  };
 }

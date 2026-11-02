@@ -21,7 +21,7 @@ class _AuthPageState extends ConsumerState<AuthPage>
   bool _isLoading = false;
 
   final TextEditingController _emailController = TextEditingController(
-    text: 'alex.vance@skillverse.ai',
+    text: 'you@example.com',
   );
   final TextEditingController _passwordController = TextEditingController(
     text: '••••••••••••',
@@ -138,7 +138,7 @@ class _AuthPageState extends ConsumerState<AuthPage>
                   const SizedBox(height: 16),
 
                   const Text(
-                    'Welcome to SkillVerse AI',
+                    'Welcome to MotionMind',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 26,
@@ -147,7 +147,7 @@ class _AuthPageState extends ConsumerState<AuthPage>
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Sign in to sync your AI Digital Twin telemetry',
+                    'Sign in to keep your practice history in one place',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 14),
                   ),
                   const SizedBox(height: 32),
@@ -217,7 +217,7 @@ class _AuthPageState extends ConsumerState<AuthPage>
                                   width: double.infinity,
                                   text: isSignUp
                                       ? 'Create Free Account'
-                                      : 'Sign In to SkillVerse',
+                                      : 'Sign in',
                                   isLoading: _isLoading,
                                   onPressed: _handleEmailAuth,
                                 ),
