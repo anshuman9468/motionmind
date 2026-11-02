@@ -19,7 +19,10 @@ class AchievementsPage extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Achievements & Badges', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Achievements & Badges',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -31,7 +34,9 @@ class AchievementsPage extends ConsumerWidget {
               GlassContainer(
                 hasGlow: true,
                 padding: const EdgeInsets.all(20),
-                backgroundColor: AppColors.primaryPurple.withValues(alpha: 0.15),
+                backgroundColor: AppColors.primaryPurple.withValues(
+                  alpha: 0.15,
+                ),
                 child: Row(
                   children: [
                     Container(
@@ -40,16 +45,33 @@ class AchievementsPage extends ConsumerWidget {
                         gradient: AppColors.emeraldCyanGradient,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 36),
+                      child: const Icon(
+                        Icons.workspace_premium_rounded,
+                        color: Colors.white,
+                        size: 36,
+                      ),
                     ),
                     const SizedBox(width: 16),
                     const Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('2 of 4 Badges Unlocked', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text(
+                            '2 of 4 Badges Unlocked',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           SizedBox(height: 4),
-                          Text('Collect verified NFT-grade credentials on chain', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                          Text(
+                            'Collect verified NFT-grade credentials on chain',
+                            style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -73,8 +95,12 @@ class AchievementsPage extends ConsumerWidget {
                 itemBuilder: (context, index) {
                   final badge = achievements[index];
                   return GlassContainer(
-                    borderColor: badge.isUnlocked ? badge.color : AppColors.glassBorder,
-                    backgroundColor: badge.isUnlocked ? badge.color.withValues(alpha: 0.1) : null,
+                    borderColor: badge.isUnlocked
+                        ? badge.color
+                        : AppColors.glassBorder,
+                    backgroundColor: badge.isUnlocked
+                        ? badge.color.withValues(alpha: 0.1)
+                        : null,
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -83,10 +109,22 @@ class AchievementsPage extends ConsumerWidget {
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: badge.isUnlocked ? badge.color.withValues(alpha: 0.2) : AppColors.surface,
-                            border: Border.all(color: badge.isUnlocked ? badge.color : AppColors.glassBorder),
+                            color: badge.isUnlocked
+                                ? badge.color.withValues(alpha: 0.2)
+                                : AppColors.surface,
+                            border: Border.all(
+                              color: badge.isUnlocked
+                                  ? badge.color
+                                  : AppColors.glassBorder,
+                            ),
                           ),
-                          child: Icon(badge.icon, color: badge.isUnlocked ? badge.color : AppColors.textMuted, size: 32),
+                          child: Icon(
+                            badge.icon,
+                            color: badge.isUnlocked
+                                ? badge.color
+                                : AppColors.textMuted,
+                            size: 32,
+                          ),
                         ),
                         Column(
                           children: [
@@ -94,7 +132,9 @@ class AchievementsPage extends ConsumerWidget {
                               badge.title,
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: badge.isUnlocked ? Colors.white : AppColors.textMuted,
+                                color: badge.isUnlocked
+                                    ? Colors.white
+                                    : AppColors.textMuted,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
                               ),
@@ -105,12 +145,18 @@ class AchievementsPage extends ConsumerWidget {
                               textAlign: TextAlign.center,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                              style: const TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 11,
+                              ),
                             ),
                           ],
                         ),
                         if (badge.isUnlocked)
-                          SkillBadge(label: '+${badge.points} XP', color: badge.color)
+                          SkillBadge(
+                            label: '+${badge.points} XP',
+                            color: badge.color,
+                          )
                         else
                           ClipRRect(
                             borderRadius: BorderRadius.circular(6),
@@ -118,7 +164,9 @@ class AchievementsPage extends ConsumerWidget {
                               value: badge.progress,
                               minHeight: 6,
                               backgroundColor: AppColors.surface,
-                              valueColor: AlwaysStoppedAnimation<Color>(badge.color),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                badge.color,
+                              ),
                             ),
                           ),
                       ],
@@ -136,7 +184,9 @@ class AchievementsPage extends ConsumerWidget {
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('800 XP Credited to your Digital Twin telemetry!'),
+                      content: Text(
+                        '800 XP Credited to your Digital Twin telemetry!',
+                      ),
                       backgroundColor: AppColors.emeraldGreen,
                     ),
                   );

@@ -121,6 +121,11 @@ class MainActivity : FlutterActivity() {
         val height = call.argument<Int>("height")
         val rotationDegrees = call.argument<Int>("rotationDegrees") ?: 0
         val cameraFacing = call.argument<String>("cameraFacing") ?: "unknown"
+        val mirrored = call.argument<Boolean>("mirrored") ?: false
+        val sessionId = call.argument<String>("sessionId")
+        val skillId = call.argument<String>("skillId") ?: "unknown"
+        val skillName = call.argument<String>("skillName")
+        val subjectView = call.argument<String>("subjectView") ?: "unknown"
         val qualitySkillId = call.argument<Int>("qualitySkillId") ?: 0
         val rawPlanes = call.argument<List<*>>("planes")
 
@@ -147,6 +152,12 @@ class MainActivity : FlutterActivity() {
                     bitmap.width,
                     bitmap.height,
                     cameraFacing,
+                    mirrored,
+                    sessionId,
+                    skillId,
+                    skillName,
+                    subjectView,
+                    rotationDegrees,
                     qualitySkillId,
                 )
                 runOnUiThread { result.success(payload) }
@@ -162,10 +173,18 @@ class MainActivity : FlutterActivity() {
         frameWidth: Int,
         frameHeight: Int,
         cameraFacing: String,
+        mirrored: Boolean,
+        sessionId: String?,
+        skillId: String,
+        skillName: String?,
+        subjectView: String,
+        rotationDegrees: Int,
         qualitySkillId: Int,
     ): Map<String, Any> {
         if (poses.isEmpty() || poses.first().size != 33) {
-            return mapOf(
+            return mutableMapOf<String, Any>(
+                "schemaVersion" to "1.0",
+                "coordinateSpace" to "normalized_image",
                 "humanDetected" to false,
                 "trackingState" to "SEARCHING_FOR_HUMAN",
                 "trackingConfidence" to 0.0,
@@ -175,24 +194,31 @@ class MainActivity : FlutterActivity() {
                 "landmarks" to emptyList<Map<String, Any>>(),
                 "frameWidth" to frameWidth,
                 "frameHeight" to frameHeight,
+                "cameraFacing" to cameraFacing,
+                "subjectView" to subjectView,
+                "mirrored" to mirrored,
+                "rotationDegrees" to rotationDegrees,
+                "skillId" to skillId,
                 "timestampUs" to (SystemClock.elapsedRealtimeNanos() / 1_000L),
-            )
+            ).apply {
+                if (sessionId != null) this["sessionId"] = sessionId
+                if (skillName != null) this["skillName"] = skillName
+            }
         }
 
         val points = poses.first()
         val averageVisibility = points.map { it.visibility().orElse(0f) }.average().toFloat()
-        val landmarks = points.map { point ->
-            mapOf(
+        val landmarks = points.mapIndexed { index, point ->
+            mapOf<String, Any?>(
+                "index" to index,
                 "x" to point.x().toDouble(),
                 "y" to point.y().toDouble(),
                 "z" to point.z().toDouble(),
-                "visibility" to point.visibility().orElse(0f).toDouble(),
-                "presence" to point.presence().orElse(0f).toDouble(),
+                "visibility" to optionalConfidence(point.visibility()),
+                "presence" to optionalConfidence(point.presence()),
             )
         }
         val joints = jointIndexes.mapValues { (_, index) -> pointToJoint(points[index]) }.toMutableMap()
-        joints["neck"] = midpoint(points[11], points[12])
-        joints["spine"] = midpoint(points[11], points[12], points[23], points[24])
 
         val qualityScore = qualityInterpreter?.let {
             try {
@@ -203,6 +229,8 @@ class MainActivity : FlutterActivity() {
             }
         }
         val payload = mutableMapOf<String, Any>(
+            "schemaVersion" to "1.0",
+            "coordinateSpace" to "normalized_image",
             "humanDetected" to true,
             "trackingState" to if (averageVisibility >= 0.55f) "HUMAN_LOCKED" else "BODY_NOT_CLEAR",
             "trackingConfidence" to averageVisibility.toDouble(),
@@ -212,33 +240,34 @@ class MainActivity : FlutterActivity() {
             "landmarks" to landmarks,
             "frameWidth" to frameWidth,
             "frameHeight" to frameHeight,
+            "cameraFacing" to cameraFacing,
+            "subjectView" to subjectView,
+            "mirrored" to mirrored,
+            "rotationDegrees" to rotationDegrees,
+            "skillId" to skillId,
             "timestampUs" to (SystemClock.elapsedRealtimeNanos() / 1_000L),
         )
+        if (sessionId != null) payload["sessionId"] = sessionId
+        if (skillName != null) payload["skillName"] = skillName
         if (qualityScore != null) {
             payload["onDeviceQualityScore"] = qualityScore.toDouble()
         }
         return payload
     }
 
-    private fun pointToJoint(point: NormalizedLandmark): Map<String, Double> = mapOf(
+    private fun optionalConfidence(value: java.util.Optional<Float>): Double? =
+        if (value.isPresent) value.get().toDouble() else null
+
+    private fun pointToJoint(point: NormalizedLandmark): Map<String, Any?> = mapOf(
         "x" to point.x().toDouble(),
         "y" to point.y().toDouble(),
         "z" to point.z().toDouble(),
-        "confidence" to point.visibility().orElse(0f).toDouble(),
+        "confidence" to optionalConfidence(point.visibility()),
+        "presence" to optionalConfidence(point.presence()),
     )
 
-    private fun midpoint(vararg points: NormalizedLandmark): Map<String, Double> {
-        val size = points.size.toDouble()
-        return mapOf(
-            "x" to points.sumOf { it.x().toDouble() } / size,
-            "y" to points.sumOf { it.y().toDouble() } / size,
-            "z" to points.sumOf { it.z().toDouble() } / size,
-            "confidence" to points.sumOf { it.visibility().orElse(0f).toDouble() } / size,
-        )
-    }
-
-    private fun runQualityModel(points: List<NormalizedLandmark>, skillId: Int): Float {
-        val features = qualityFeatures(points)
+    private fun runQualityModel(points: List<NormalizedLandmark>, skillId: Int): Float? {
+        val features = qualityFeatures(points) ?: return null
         // motionmind_quality.tflite exposes quality_score with shape [1].
         val output = FloatArray(1)
         qualityInterpreter!!.runForMultipleInputsOutputs(
@@ -254,7 +283,7 @@ class MainActivity : FlutterActivity() {
      * The quality model accepts the eight portable MotionMind dimensions in
      * 0..100 order. These are derived only from landmarks, never camera pixels.
      */
-    private fun qualityFeatures(points: List<NormalizedLandmark>): FloatArray {
+    private fun qualityFeatures(points: List<NormalizedLandmark>): FloatArray? {
         val leftShoulder = points[11]
         val rightShoulder = points[12]
         val leftElbow = points[13]
@@ -271,10 +300,10 @@ class MainActivity : FlutterActivity() {
         val shoulderTilt = abs(leftShoulder.y() - rightShoulder.y())
         val hipTilt = abs(leftHip.y() - rightHip.y())
         val alignment = (100f - (shoulderTilt + hipTilt) * 220f).coerceIn(0f, 100f)
-        val leftKneeAngle = angle(leftHip, leftKnee, leftAnkle)
-        val rightKneeAngle = angle(rightHip, rightKnee, rightAnkle)
-        val leftElbowAngle = angle(leftShoulder, leftElbow, leftWrist)
-        val rightElbowAngle = angle(rightShoulder, rightElbow, rightWrist)
+        val leftKneeAngle = angle(leftHip, leftKnee, leftAnkle) ?: return null
+        val rightKneeAngle = angle(rightHip, rightKnee, rightAnkle) ?: return null
+        val leftElbowAngle = angle(leftShoulder, leftElbow, leftWrist) ?: return null
+        val rightElbowAngle = angle(rightShoulder, rightElbow, rightWrist) ?: return null
         val rangeOfMotion = ((leftKneeAngle + rightKneeAngle) / 3.6f).coerceIn(0f, 100f)
         val shoulderMid = midpointOf(leftShoulder, rightShoulder)
         val hipMid = midpointOf(leftHip, rightHip)
@@ -291,13 +320,13 @@ class MainActivity : FlutterActivity() {
         return floatArrayOf(alignment, rangeOfMotion, posture, symmetry, stability, control, extension, timing)
     }
 
-    private fun angle(a: NormalizedLandmark, b: NormalizedLandmark, c: NormalizedLandmark): Float {
+    private fun angle(a: NormalizedLandmark, b: NormalizedLandmark, c: NormalizedLandmark): Float? {
         val abX = a.x() - b.x()
         val abY = a.y() - b.y()
         val bcX = c.x() - b.x()
         val bcY = c.y() - b.y()
         val denominator = sqrt(abX * abX + abY * abY) * sqrt(bcX * bcX + bcY * bcY)
-        if (denominator <= 0.00001f) return 180f
+        if (denominator <= 0.00001f) return null
         val cosine = ((abX * bcX + abY * bcY) / denominator).coerceIn(-1f, 1f)
         return Math.toDegrees(kotlin.math.acos(cosine.toDouble())).toFloat()
     }
@@ -315,15 +344,22 @@ class MainActivity : FlutterActivity() {
                 // but accepting a numeric list keeps this bridge compatible with
                 // CameraX implementations that serialize planes differently.
                 is List<*> -> ByteArray(encoded.size) { index ->
-                    (encoded[index] as? Number)?.toInt()?.and(0xff)
-                        ?.toByte() ?: 0
+                    val value = encoded[index] as? Number
+                        ?: error("Image plane contains a non-numeric byte.")
+                    value.toInt().and(0xff).toByte()
                 }
                 else -> error("Image plane bytes are missing.")
             }
+            val bytesPerRow = (plane["bytesPerRow"] as? Number)?.toInt()
+                ?: error("Image plane row stride is missing.")
+            val bytesPerPixel = (plane["bytesPerPixel"] as? Number)?.toInt()
+                ?: error("Image plane pixel stride is missing.")
+            require(bytesPerRow > 0) { "Image plane row stride is invalid." }
+            require(bytesPerPixel > 0) { "Image plane pixel stride is invalid." }
             CameraPlane(
                 bytes = bytes,
-                bytesPerRow = (plane["bytesPerRow"] as? Number)?.toInt() ?: 0,
-                bytesPerPixel = (plane["bytesPerPixel"] as? Number)?.toInt() ?: 1,
+                bytesPerRow = bytesPerRow,
+                bytesPerPixel = bytesPerPixel,
             )
         }
     }
@@ -340,17 +376,21 @@ class MainActivity : FlutterActivity() {
                 val uvColumn = x shr 1
                 val uIndex = uvRow * uPlane.bytesPerRow + uvColumn * uPlane.bytesPerPixel
                 val vIndex = uvRow * vPlane.bytesPerRow + uvColumn * vPlane.bytesPerPixel
-                val yValue = samplePlane(yPlane.bytes, yIndex, 16)
-                val uValue = samplePlane(uPlane.bytes, uIndex, 128)
-                val vValue = samplePlane(vPlane.bytes, vIndex, 128)
+                // A truncated or malformed plane must abort this frame. Using
+                // neutral fallback bytes would create a synthetic image that
+                // could still be passed to pose inference.
+                val yValue = samplePlane(yPlane.bytes, yIndex)
+                val uValue = samplePlane(uPlane.bytes, uIndex)
+                val vValue = samplePlane(vPlane.bytes, vIndex)
                 pixels[y * width + x] = yuvToArgb(yValue, uValue, vValue)
             }
         }
         return Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888)
     }
 
-    private fun samplePlane(bytes: ByteArray, index: Int, fallback: Int): Int {
-        return if (index in bytes.indices) bytes[index].toInt() and 0xff else fallback
+    private fun samplePlane(bytes: ByteArray, index: Int): Int {
+        require(index in bytes.indices) { "Camera image plane is truncated." }
+        return bytes[index].toInt() and 0xff
     }
 
     private fun yuvToArgb(y: Int, u: Int, v: Int): Int {

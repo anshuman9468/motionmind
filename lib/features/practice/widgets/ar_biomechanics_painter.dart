@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../models/skill_biomechanics.dart';
 import '../services/biomechanics_engine.dart';
 
+enum PoseOverlayMode { off, minimal, fullSkeleton }
+
+/// Renders only landmarks supplied by the native tracker. Ghost mode is a
+/// visual reference overlay; it is never used as a measurement input.
 class ARBiomechanicsPainter extends CustomPainter {
   final HumanTrackingPayload payload;
   final BiomechanicsEvaluationFrame evaluation;
   final SkillMovementPhase currentPhase;
   final bool isGhostModeEnabled;
   final bool isReplayModeEnabled;
+  final PoseOverlayMode overlayMode;
   final double pulseProgress;
 
   ARBiomechanicsPainter({
@@ -17,276 +23,325 @@ class ARBiomechanicsPainter extends CustomPainter {
     required this.currentPhase,
     required this.isGhostModeEnabled,
     required this.isReplayModeEnabled,
+    this.overlayMode = PoseOverlayMode.minimal,
     required this.pulseProgress,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (!payload.humanDetected || payload.joints.isEmpty) return;
+    if (overlayMode == PoseOverlayMode.off ||
+        !payload.humanDetected ||
+        payload.joints.isEmpty)
+      return;
 
+    final joints = payload.joints;
     final center = Offset(size.width / 2, size.height / 2);
     final scaleX = size.width * 0.45;
     final scaleY = size.height * 0.45;
 
-    Offset map3D(Joint3DPoint p) {
-      return Offset(center.dx + (p.x * scaleX), center.dy - (p.y * scaleY));
+    Offset mapPoint(Joint3DPoint point) {
+      // Native MediaPipe coordinates are normalized image coordinates. Keep a
+      // compatibility branch for older named-joint payloads using [-1, 1].
+      if (payload.coordinateSpace == 'normalized_image' &&
+          point.x >= 0 &&
+          point.x <= 1 &&
+          point.y >= 0 &&
+          point.y <= 1) {
+        return Offset(point.x * size.width, point.y * size.height);
+      }
+      return Offset(center.dx + point.x * scaleX, center.dy - point.y * scaleY);
     }
 
-    final joints = payload.joints;
-    final head = map3D(joints['head'] ?? const Joint3DPoint(x: 0, y: 0.85, z: 0));
-    final neck = map3D(joints['neck'] ?? const Joint3DPoint(x: 0, y: 0.70, z: 0));
-    final lShoulder = map3D(joints['leftShoulder'] ?? const Joint3DPoint(x: -0.22, y: 0.65, z: 0));
-    final rShoulder = map3D(joints['rightShoulder'] ?? const Joint3DPoint(x: 0.22, y: 0.65, z: 0));
-    final lElbow = map3D(joints['leftElbow'] ?? const Joint3DPoint(x: -0.38, y: 0.35, z: 0.05));
-    final lWrist = map3D(joints['leftWrist'] ?? const Joint3DPoint(x: -0.45, y: 0.10, z: 0.10));
-    final rElbow = map3D(joints['rightElbow'] ?? const Joint3DPoint(x: 0.38, y: 0.35, z: 0.05));
-    final rWrist = map3D(joints['rightWrist'] ?? const Joint3DPoint(x: 0.45, y: 0.10, z: 0.10));
-    final spine = map3D(joints['spine'] ?? const Joint3DPoint(x: 0, y: 0.30, z: 0));
-    final lHip = map3D(joints['leftHip'] ?? const Joint3DPoint(x: -0.15, y: 0.10, z: 0));
-    final rHip = map3D(joints['rightHip'] ?? const Joint3DPoint(x: 0.15, y: 0.10, z: 0));
-    final lKnee = map3D(joints['leftKnee'] ?? const Joint3DPoint(x: -0.18, y: -0.30, z: -0.05));
-    final rKnee = map3D(joints['rightKnee'] ?? const Joint3DPoint(x: 0.18, y: -0.30, z: -0.05));
-    final lAnkle = map3D(joints['leftAnkle'] ?? const Joint3DPoint(x: -0.20, y: -0.70, z: 0));
-    final rAnkle = map3D(joints['rightAnkle'] ?? const Joint3DPoint(x: 0.20, y: -0.70, z: 0));
+    Offset? point(String name) {
+      final value = joints[name];
+      return value == null ? null : mapPoint(value);
+    }
+
+    final head = point('head');
+    final leftShoulder = point('leftShoulder');
+    final rightShoulder = point('rightShoulder');
+    final leftElbow = point('leftElbow');
+    final rightElbow = point('rightElbow');
+    final leftWrist = point('leftWrist');
+    final rightWrist = point('rightWrist');
+    final leftHip = point('leftHip');
+    final rightHip = point('rightHip');
+    final leftKnee = point('leftKnee');
+    final rightKnee = point('rightKnee');
+    final leftAnkle = point('leftAnkle');
+    final rightAnkle = point('rightAnkle');
+    final torso =
+        leftShoulder != null &&
+            rightShoulder != null &&
+            leftHip != null &&
+            rightHip != null
+        ? Offset(
+            (leftShoulder.dx + rightShoulder.dx + leftHip.dx + rightHip.dx) / 4,
+            (leftShoulder.dy + rightShoulder.dy + leftHip.dy + rightHip.dy) / 4,
+          )
+        : null;
 
     final themeColor = _getOverallSeverityColor(evaluation);
+    final kneeAngle =
+        joints['leftHip'] != null &&
+            joints['leftKnee'] != null &&
+            joints['leftAnkle'] != null
+        ? BiomechanicsEngine.calculateAngle(
+            joints['leftHip']!,
+            joints['leftKnee']!,
+            joints['leftAnkle']!,
+            coordinateSpace: payload.coordinateSpace,
+          )
+        : null;
+    final actionLabel = kneeAngle == null
+        ? 'POSE DATA INCOMPLETE'
+        : kneeAngle < 98
+        ? 'SITTING / DESK POSTURE'
+        : kneeAngle < 115
+        ? 'SQUAT / CROUCH LOAD'
+        : kneeAngle < 145
+        ? 'WALKING / RUNNING CADENCE'
+        : 'STANDING POSTURE';
 
-    // 1. Classify Dynamic Human Action (Sitting, Standing, Walking, Running, Jumping, Squatting)
-    final lKneeAngle = BiomechanicsEngine.calculate3DAngle(
-      joints['leftHip'] ?? const Joint3DPoint(x: -0.15, y: 0.10, z: 0),
-      joints['leftKnee'] ?? const Joint3DPoint(x: -0.18, y: -0.30, z: -0.05),
-      joints['leftAnkle'] ?? const Joint3DPoint(x: -0.20, y: -0.70, z: 0),
-    );
-
-    String actionLabel = 'STANDING POSTURE';
-    if (lKneeAngle < 98.0) {
-      actionLabel = 'SITTING / DESK POSTURE';
-    } else if (lKneeAngle < 115.0) {
-      actionLabel = 'SQUAT / CROUCH LOAD';
-    } else if (lKneeAngle < 145.0) {
-      actionLabel = 'WALKING / RUNNING CADENCE';
+    final bodyPoints = [
+      head,
+      leftShoulder,
+      rightShoulder,
+      leftElbow,
+      rightElbow,
+      leftWrist,
+      rightWrist,
+      leftHip,
+      rightHip,
+      leftKnee,
+      rightKnee,
+      leftAnkle,
+      rightAnkle,
+    ].whereType<Offset>().toList();
+    if (overlayMode == PoseOverlayMode.minimal) {
+      // Keep the default camera view calm: only show the body region involved
+      // in a verified correction. Tracking continues regardless of overlay.
+      final guide = evaluation.jointResults['knee']?.currentAngle != null
+          ? <Offset?>[leftHip, leftKnee, leftAnkle]
+          : evaluation.jointResults['elbow']?.currentAngle != null
+          ? <Offset?>[leftShoulder, leftElbow, leftWrist]
+          : <Offset?>[torso, leftShoulder, rightShoulder, leftHip, rightHip];
+      final guidePoints = guide.whereType<Offset>().toList(growable: false);
+      final guidePaint = Paint()
+        ..color = themeColor.withValues(alpha: .8)
+        ..strokeWidth = 2.5
+        ..strokeCap = StrokeCap.round;
+      for (var i = 1; i < guidePoints.length; i++) {
+        canvas.drawLine(guidePoints[i - 1], guidePoints[i], guidePaint);
+      }
+      for (final point in guidePoints) {
+        canvas.drawCircle(point, 4, Paint()..color = themeColor);
+      }
+      return;
     }
 
-    // 2. Draw Dynamic Laser Sweep Line
-    final scanY = (head.dy - 30) + (pulseProgress * (rAnkle.dy - head.dy + 60));
+    final scanTop = bodyPoints.isEmpty
+        ? 0.0
+        : bodyPoints.map((p) => p.dy).reduce((a, b) => a < b ? a : b);
+    final scanBottom = bodyPoints.isEmpty
+        ? size.height
+        : bodyPoints.map((p) => p.dy).reduce((a, b) => a > b ? a : b);
+    final scanY = scanTop + pulseProgress * (scanBottom - scanTop);
+    final laserGlowPaint = Paint()
+      ..color = AppColors.cyanGlow.withValues(alpha: 0.15)
+      ..strokeWidth = 12;
     final laserPaint = Paint()
       ..color = AppColors.cyanGlow
       ..strokeWidth = 2.5;
-    final laserGlowPaint = Paint()
-      ..color = AppColors.cyanGlow.withValues(alpha: 0.15)
-      ..strokeWidth = 12.0;
+    canvas.drawLine(
+      Offset(size.width * .1, scanY),
+      Offset(size.width * .9, scanY),
+      laserGlowPaint,
+    );
+    canvas.drawLine(
+      Offset(size.width * .1, scanY),
+      Offset(size.width * .9, scanY),
+      laserPaint,
+    );
 
-    canvas.drawLine(Offset(size.width * 0.1, scanY), Offset(size.width * 0.9, scanY), laserGlowPaint);
-    canvas.drawLine(Offset(size.width * 0.1, scanY), Offset(size.width * 0.9, scanY), laserPaint);
-
-    // 3. Volumetric Chest Cage Wireframe Box
-    final chestPath = Path()
-      ..moveTo(lShoulder.dx, lShoulder.dy)
-      ..lineTo(rShoulder.dx, rShoulder.dy)
-      ..lineTo(rHip.dx, rHip.dy)
-      ..lineTo(lHip.dx, lHip.dy)
-      ..close();
-
-    final chestGridPaint = Paint()
-      ..color = AppColors.cyanGlow.withValues(alpha: 0.08)
-      ..style = PaintingStyle.fill;
-    final chestBorderPaint = Paint()
-      ..color = AppColors.cyanGlow.withValues(alpha: 0.35)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
-    canvas.drawPath(chestPath, chestGridPaint);
-    canvas.drawPath(chestPath, chestBorderPaint);
-    canvas.drawLine(lShoulder, rHip, chestBorderPaint);
-    canvas.drawLine(rShoulder, lHip, chestBorderPaint);
-
-    // 4. Ghost Target Overlay
-    if (isGhostModeEnabled) {
-      final ghostPaint = Paint()
-        ..color = AppColors.cyanGlow.withValues(alpha: 0.35)
-        ..strokeWidth = 3.5
-        ..style = PaintingStyle.stroke;
-
-      final gElbowL = Offset(lShoulder.dx - 55, lShoulder.dy + 55);
-      final gWristL = Offset(gElbowL.dx - 50, gElbowL.dy + 30);
-      final gKneeL = Offset(lHip.dx - 20, lHip.dy + 80);
-      final gAnkleL = Offset(gKneeL.dx - 15, gKneeL.dy + 75);
-
-      canvas.drawLine(head, neck, ghostPaint);
-      canvas.drawLine(neck, spine, ghostPaint);
-      canvas.drawLine(lShoulder, gElbowL, ghostPaint);
-      canvas.drawLine(gElbowL, gWristL, ghostPaint);
-      canvas.drawLine(lHip, gKneeL, ghostPaint);
-      canvas.drawLine(gKneeL, gAnkleL, ghostPaint);
-    }
-
-    // 5. Draw Dual-Layered Volumetric Glowing Bone Tubes
-    void drawVolumetricBone(Offset from, Offset to) {
-      // Outer Neon Glow Halo
-      final outerGlow = Paint()
-        ..color = themeColor.withValues(alpha: 0.25)
-        ..strokeWidth = 12.0
+    void drawBone(Offset? from, Offset? to) {
+      if (from == null || to == null) return;
+      final outer = Paint()
+        ..color = themeColor.withValues(alpha: .25)
+        ..strokeWidth = 12
         ..strokeCap = StrokeCap.round;
-
-      // Inner Core Bone Tube
-      final innerCore = Paint()
+      final inner = Paint()
         ..color = themeColor
         ..strokeWidth = 4.5
         ..strokeCap = StrokeCap.round;
-
-      canvas.drawLine(from, to, outerGlow);
-      canvas.drawLine(from, to, innerCore);
+      canvas.drawLine(from, to, outer);
+      canvas.drawLine(from, to, inner);
     }
 
-    drawVolumetricBone(head, neck);
-    drawVolumetricBone(neck, spine);
-    drawVolumetricBone(neck, lShoulder);
-    drawVolumetricBone(neck, rShoulder);
+    drawBone(leftShoulder, rightShoulder);
+    drawBone(leftHip, rightHip);
+    drawBone(leftShoulder, leftElbow);
+    drawBone(leftElbow, leftWrist);
+    drawBone(rightShoulder, rightElbow);
+    drawBone(rightElbow, rightWrist);
+    drawBone(leftShoulder, leftHip);
+    drawBone(rightShoulder, rightHip);
+    drawBone(leftHip, leftKnee);
+    drawBone(leftKnee, leftAnkle);
+    drawBone(rightHip, rightKnee);
+    drawBone(rightKnee, rightAnkle);
 
-    drawVolumetricBone(lShoulder, lElbow);
-    drawVolumetricBone(lElbow, lWrist);
-    drawVolumetricBone(rShoulder, rElbow);
-    drawVolumetricBone(rElbow, rWrist);
-
-    drawVolumetricBone(spine, lHip);
-    drawVolumetricBone(spine, rHip);
-    drawVolumetricBone(lHip, rHip);
-
-    drawVolumetricBone(lHip, lKnee);
-    drawVolumetricBone(lKnee, lAnkle);
-    drawVolumetricBone(rHip, rKnee);
-    drawVolumetricBone(rKnee, rAnkle);
-
-    // 6. Holographic Head Synapse Scanner
-    canvas.drawCircle(head, 24 + (pulseProgress * 6), Paint()..color = AppColors.cyanGlow.withValues(alpha: 0.15)..style = PaintingStyle.stroke..strokeWidth = 1.5);
-    canvas.drawCircle(head, 14, Paint()..color = AppColors.cyanGlow.withValues(alpha: 0.3)..style = PaintingStyle.fill);
-
-    // 7. Volumetric Spherical Joint Nodes
-    final allJoints = [head, neck, lShoulder, rShoulder, lElbow, lWrist, rElbow, rWrist, spine, lHip, rHip, lKnee, lAnkle, rKnee, rAnkle];
-    for (final j in allJoints) {
-      final sphereGlow = Paint()
-        ..color = themeColor.withValues(alpha: 0.35)
-        ..style = PaintingStyle.fill;
-      final sphereCore = Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.fill;
-
-      canvas.drawCircle(j, 10 + (pulseProgress * 4), sphereGlow);
-      canvas.drawCircle(j, 5, sphereCore);
+    if (isGhostModeEnabled &&
+        leftHip != null &&
+        leftKnee != null &&
+        leftAnkle != null) {
+      final ghostPaint = Paint()
+        ..color = AppColors.cyanGlow.withValues(alpha: .35)
+        ..strokeWidth = 3.5
+        ..style = PaintingStyle.stroke;
+      canvas.drawLine(leftHip, leftKnee, ghostPaint);
+      canvas.drawLine(leftKnee, leftAnkle, ghostPaint);
     }
 
-    // 8. Render AR 3D Directional Correction Prompts directly attached to joints
-    final tp = TextPainter(textDirection: TextDirection.ltr);
-
-    void drawARCorrectionTag(String text, BiomechanicalErrorSeverity severity, Offset jointPos, Offset offset) {
-      Color c;
-      switch (severity) {
-        case BiomechanicalErrorSeverity.green:
-          c = AppColors.emeraldGreen;
-          break;
-        case BiomechanicalErrorSeverity.yellow:
-          c = Colors.amber;
-          break;
-        case BiomechanicalErrorSeverity.red:
-          c = AppColors.roseError;
-          break;
-      }
-
-      final tagPos = Offset(jointPos.dx + offset.dx, jointPos.dy + offset.dy);
-
-      canvas.drawLine(
-        jointPos,
-        tagPos,
-        Paint()..color = c.withValues(alpha: 0.8)..strokeWidth = 1.5,
+    if (head != null) {
+      canvas.drawCircle(
+        head,
+        24 + pulseProgress * 6,
+        Paint()
+          ..color = AppColors.cyanGlow.withValues(alpha: .15)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5,
       );
-      canvas.drawCircle(jointPos, 6, Paint()..color = c..style = PaintingStyle.fill);
+      canvas.drawCircle(
+        head,
+        14,
+        Paint()..color = AppColors.cyanGlow.withValues(alpha: .3),
+      );
+    }
+    for (final joint in bodyPoints) {
+      canvas.drawCircle(
+        joint,
+        10 + pulseProgress * 4,
+        Paint()..color = themeColor.withValues(alpha: .35),
+      );
+      canvas.drawCircle(joint, 5, Paint()..color = Colors.white);
+    }
 
-      tp.text = TextSpan(
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+    void drawTag(
+      String text,
+      BiomechanicalErrorSeverity severity,
+      Offset? joint,
+      Offset offset,
+    ) {
+      if (joint == null || severity == BiomechanicalErrorSeverity.unavailable)
+        return;
+      final color = switch (severity) {
+        BiomechanicalErrorSeverity.green => AppColors.emeraldGreen,
+        BiomechanicalErrorSeverity.yellow => Colors.amber,
+        BiomechanicalErrorSeverity.red => AppColors.roseError,
+        BiomechanicalErrorSeverity.unavailable => AppColors.textMuted,
+      };
+      final tagPosition = joint + offset;
+      canvas.drawLine(
+        joint,
+        tagPosition,
+        Paint()
+          ..color = color.withValues(alpha: .8)
+          ..strokeWidth = 1.5,
+      );
+      canvas.drawCircle(joint, 6, Paint()..color = color);
+      textPainter.text = TextSpan(
         text: ' $text ',
         style: TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.bold,
           fontSize: 10,
-          background: Paint()..color = c.withValues(alpha: 0.95)..style = PaintingStyle.fill,
+          background: Paint()..color = color.withValues(alpha: .95),
         ),
       );
-      tp.layout();
-      tp.paint(canvas, tagPos);
+      textPainter.layout();
+      textPainter.paint(canvas, tagPosition);
     }
 
-    // AR Tags
-    final elbowRes = evaluation.jointResults['elbow'];
-    if (elbowRes != null) {
-      drawARCorrectionTag(
-        '${elbowRes.correctionPrompt} [${elbowRes.currentAngle.toInt()}°]',
-        elbowRes.severity,
-        lElbow,
+    final elbow = evaluation.jointResults['elbow'];
+    if (elbow?.currentAngle != null) {
+      drawTag(
+        '${elbow!.correctionPrompt} [${elbow.currentAngle!.toInt()}°]',
+        elbow.severity,
+        leftElbow,
         const Offset(-130, -20),
       );
     }
-
-    final kneeRes = evaluation.jointResults['knee'];
-    if (kneeRes != null) {
-      drawARCorrectionTag(
-        '${kneeRes.correctionPrompt} [${kneeRes.currentAngle.toInt()}°]',
-        kneeRes.severity,
-        lKnee,
+    final knee = evaluation.jointResults['knee'];
+    if (knee?.currentAngle != null) {
+      drawTag(
+        '${knee!.correctionPrompt} [${knee.currentAngle!.toInt()}°]',
+        knee.severity,
+        leftKnee,
         const Offset(20, -10),
       );
     }
-
-    final torsoRes = evaluation.jointResults['torso'];
-    if (torsoRes != null) {
-      drawARCorrectionTag(
-        '${torsoRes.correctionPrompt} [Torso: ${evaluation.torsoInclination.toInt()}°]',
-        torsoRes.severity,
-        spine,
+    final torsoResult = evaluation.jointResults['torso'];
+    if (torsoResult?.currentAngle != null) {
+      drawTag(
+        '${torsoResult!.correctionPrompt} [Torso: ${evaluation.torsoInclination!.toInt()}°]',
+        torsoResult.severity,
+        torso,
         const Offset(24, 15),
       );
     }
 
-    // Dynamic Action Badge over head
-    tp.text = TextSpan(
-      text: ' ⚡ DYNAMIC ACTION: $actionLabel ',
-      style: TextStyle(
-        color: Colors.white,
-        fontWeight: FontWeight.bold,
-        fontSize: 10,
-        background: Paint()..color = AppColors.primaryBlue..style = PaintingStyle.fill,
-      ),
-    );
-    tp.layout();
-    tp.paint(canvas, Offset(head.dx - (tp.width / 2), head.dy - 40));
+    if (head != null) {
+      textPainter.text = TextSpan(
+        text: ' ⚡ DYNAMIC ACTION: $actionLabel ',
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 10,
+          background: Paint()..color = AppColors.primaryBlue,
+        ),
+      );
+      textPainter.layout();
+      textPainter.paint(
+        canvas,
+        Offset(head.dx - textPainter.width / 2, head.dy - 40),
+      );
+    }
 
-    // Heatmap in Replay mode
-    if (isReplayModeEnabled) {
+    if (isReplayModeEnabled && leftElbow != null) {
       final heatPaint = Paint()
         ..shader = RadialGradient(
           colors: [
-            Colors.red.withValues(alpha: 0.6),
-            Colors.orange.withValues(alpha: 0.3),
+            Colors.red.withValues(alpha: .6),
+            Colors.orange.withValues(alpha: .3),
             Colors.transparent,
           ],
-        ).createShader(Rect.fromCircle(center: lElbow, radius: 45))
-        ..style = PaintingStyle.fill;
-
-      canvas.drawCircle(lElbow, 45, heatPaint);
+        ).createShader(Rect.fromCircle(center: leftElbow, radius: 45));
+      canvas.drawCircle(leftElbow, 45, heatPaint);
     }
   }
 
   Color _getOverallSeverityColor(BiomechanicsEvaluationFrame eval) {
-    if (eval.overallTechniqueScore >= 85) return AppColors.emeraldGreen;
-    if (eval.overallTechniqueScore >= 70) return AppColors.primaryBlue;
+    if (!eval.techniqueEvaluationAvailable ||
+        eval.overallTechniqueScore == null) {
+      return AppColors.textMuted;
+    }
+    if (eval.overallTechniqueScore! >= 85) return AppColors.emeraldGreen;
+    if (eval.overallTechniqueScore! >= 70) return AppColors.primaryBlue;
     return AppColors.roseError;
   }
 
   @override
   bool shouldRepaint(covariant ARBiomechanicsPainter oldDelegate) {
-    return oldDelegate.payload.trackingConfidence != payload.trackingConfidence ||
-        oldDelegate.evaluation.overallTechniqueScore != evaluation.overallTechniqueScore ||
+    return oldDelegate.payload.timestampUs != payload.timestampUs ||
+        oldDelegate.evaluation.status != evaluation.status ||
+        oldDelegate.evaluation.overallTechniqueScore !=
+            evaluation.overallTechniqueScore ||
         oldDelegate.currentPhase.name != currentPhase.name ||
         oldDelegate.isGhostModeEnabled != isGhostModeEnabled ||
         oldDelegate.isReplayModeEnabled != isReplayModeEnabled ||
+        oldDelegate.overlayMode != overlayMode ||
         oldDelegate.pulseProgress != pulseProgress;
   }
 }

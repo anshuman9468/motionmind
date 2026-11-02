@@ -1,17 +1,24 @@
 import 'dart:math' as math;
+
 import '../models/skill_biomechanics.dart';
 
-enum BiomechanicalErrorSeverity {
-  green,  // Within target range
-  yellow, // Minor deviation (1° - 15° outside range)
-  red,    // Major deviation (> 15° outside range)
+/// A local mirror of the versioned backend quality states. The mobile engine
+/// uses the same fail-closed semantics before rendering any technique result.
+enum BiomechanicsEvaluationStatus {
+  valid,
+  lowConfidence,
+  insufficientData,
+  unsupportedView,
+  trackingLost,
 }
+
+enum BiomechanicalErrorSeverity { unavailable, green, yellow, red }
 
 class JointEvaluationResult {
   final String jointName;
-  final double currentAngle;
+  final double? currentAngle;
   final double targetAngle;
-  final double angleDifference;
+  final double? angleDifference;
   final BiomechanicalErrorSeverity severity;
   final String correctionPrompt;
   final double confidence;
@@ -30,15 +37,19 @@ class JointEvaluationResult {
 class BiomechanicsEvaluationFrame {
   final bool isHumanDetected;
   final HumanDetectionState trackingState;
-  final double overallTechniqueScore;
-  final double torsoInclination;
-  final double limbSymmetryScore;
+  final BiomechanicsEvaluationStatus status;
+  final bool techniqueEvaluationAvailable;
+  final double? overallTechniqueScore;
+  final double? torsoInclination;
+  final double? limbSymmetryScore;
   final Map<String, JointEvaluationResult> jointResults;
   final String primaryInstruction;
 
   const BiomechanicsEvaluationFrame({
     required this.isHumanDetected,
     required this.trackingState,
+    required this.status,
+    required this.techniqueEvaluationAvailable,
     required this.overallTechniqueScore,
     required this.torsoInclination,
     required this.limbSymmetryScore,
@@ -48,173 +59,468 @@ class BiomechanicsEvaluationFrame {
 }
 
 class BiomechanicsEngine {
-  /// Calculate 3D angle between three points: P1 (origin node), P2 (joint vertex), P3 (terminal node)
-  static double calculate3DAngle(Joint3DPoint p1, Joint3DPoint p2, Joint3DPoint p3) {
-    final v1x = p1.x - p2.x;
-    final v1y = p1.y - p2.y;
-    final v1z = p1.z - p2.z;
+  /// Initial heuristic gate; keep configurable when exercise-specific mobile
+  /// profiles are introduced. This is not a validated accuracy threshold.
+  static const localConfidenceThreshold = 0.60;
 
-    final v2x = p3.x - p2.x;
-    final v2y = p3.y - p2.y;
-    final v2z = p3.z - p2.z;
+  static bool _finite(double value) => value.isFinite;
 
-    final dotProduct = (v1x * v2x) + (v1y * v2y) + (v1z * v2z);
-    final mag1 = math.sqrt((v1x * v1x) + (v1y * v1y) + (v1z * v1z));
-    final mag2 = math.sqrt((v2x * v2x) + (v2y * v2y) + (v2z * v2z));
+  /// Returns angle ABC in degrees. Normalized-image landmarks intentionally
+  /// use only x/y; MediaPipe normalized z is relative depth, not metric data.
+  static double? calculateAngle(
+    Joint3DPoint p1,
+    Joint3DPoint p2,
+    Joint3DPoint p3, {
+    String coordinateSpace = 'normalized_image',
+  }) {
+    final values = [p1.x, p1.y, p1.z, p2.x, p2.y, p2.z, p3.x, p3.y, p3.z];
+    if (values.any((value) => !_finite(value))) return null;
 
-    if (mag1 == 0 || mag2 == 0) return 0.0;
-
-    double cosTheta = dotProduct / (mag1 * mag2);
-    // Clamp to [-1.0, 1.0] to prevent NaN from precision errors
-    cosTheta = math.max(-1.0, math.min(1.0, cosTheta));
-
-    final rad = math.acos(cosTheta);
-    return (rad * 180.0) / math.pi;
+    final useWorld = coordinateSpace == 'world';
+    final v1 = <double>[p1.x - p2.x, p1.y - p2.y, if (useWorld) p1.z - p2.z];
+    final v2 = <double>[p3.x - p2.x, p3.y - p2.y, if (useWorld) p3.z - p2.z];
+    final mag1 = math.sqrt(
+      v1.fold<double>(0, (sum, value) => sum + value * value),
+    );
+    final mag2 = math.sqrt(
+      v2.fold<double>(0, (sum, value) => sum + value * value),
+    );
+    if (mag1 <= 1e-8 || mag2 <= 1e-8) return null;
+    final dot = v1.asMap().entries.fold<double>(
+      0,
+      (sum, entry) => sum + entry.value * v2[entry.key],
+    );
+    final cosine = (dot / (mag1 * mag2)).clamp(-1.0, 1.0).toDouble();
+    final result = math.acos(cosine) * 180.0 / math.pi;
+    return result.isFinite ? double.parse(result.toStringAsFixed(3)) : null;
   }
 
-  /// Calculate Torso inclination angle relative to pure vertical axis (0, 1, 0)
-  static double calculateTorsoInclination(Joint3DPoint spine, Joint3DPoint neck) {
-    final dx = neck.x - spine.x;
-    final dy = neck.y - spine.y;
-    final dz = neck.z - spine.z;
+  /// Backwards-compatible name retained for widgets/tests.
+  static double? calculate3DAngle(
+    Joint3DPoint p1,
+    Joint3DPoint p2,
+    Joint3DPoint p3, {
+    String coordinateSpace = 'normalized_image',
+  }) => calculateAngle(p1, p2, p3, coordinateSpace: coordinateSpace);
 
-    final mag = math.sqrt((dx * dx) + (dy * dy) + (dz * dz));
-    if (mag == 0) return 180.0;
-
-    final cosTheta = dy / mag;
-    final clamped = math.max(-1.0, math.min(1.0, cosTheta));
-    return (math.acos(clamped) * 180.0) / math.pi;
+  static double? calculateTorsoInclination(
+    Joint3DPoint leftShoulder,
+    Joint3DPoint rightShoulder,
+    Joint3DPoint leftHip,
+    Joint3DPoint rightHip, {
+    String coordinateSpace = 'normalized_image',
+  }) {
+    final shoulder = Joint3DPoint(
+      x: (leftShoulder.x + rightShoulder.x) / 2,
+      y: (leftShoulder.y + rightShoulder.y) / 2,
+      z: (leftShoulder.z + rightShoulder.z) / 2,
+      confidence: math
+          .min(leftShoulder.confidence, rightShoulder.confidence)
+          .toDouble(),
+    );
+    final hip = Joint3DPoint(
+      x: (leftHip.x + rightHip.x) / 2,
+      y: (leftHip.y + rightHip.y) / 2,
+      z: (leftHip.z + rightHip.z) / 2,
+      confidence: math.min(leftHip.confidence, rightHip.confidence).toDouble(),
+    );
+    final values = [shoulder.x, shoulder.y, shoulder.z, hip.x, hip.y, hip.z];
+    if (values.any((value) => !_finite(value))) return null;
+    final useWorld = coordinateSpace == 'world';
+    final dx = shoulder.x - hip.x;
+    final dy = shoulder.y - hip.y;
+    final dz = useWorld ? shoulder.z - hip.z : 0.0;
+    final magnitude = math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (magnitude <= 1e-8) return null;
+    final referenceY = useWorld ? 1.0 : -1.0;
+    final cosine = (dy * referenceY / magnitude).clamp(-1.0, 1.0).toDouble();
+    final result = math.acos(cosine) * 180.0 / math.pi;
+    return result.isFinite ? double.parse(result.toStringAsFixed(3)) : null;
   }
 
-  /// Calculate Left/Right limb symmetry ratio (1.0 = perfect symmetry)
-  static double calculateLimbSymmetry(double leftAngle, double rightAngle) {
-    final diff = (leftAngle - rightAngle).abs();
-    final symmetry = 1.0 - (diff / 180.0);
-    return math.max(0.0, math.min(1.0, symmetry));
+  static double? calculateLimbSymmetry(double? leftAngle, double? rightAngle) {
+    if (leftAngle == null || rightAngle == null) return null;
+    final result = 1.0 - ((leftAngle - rightAngle).abs() / 180.0);
+    return result.clamp(0.0, 1.0).toDouble();
   }
 
-  /// Evaluate frame joint telemetry against target phase
+  static double _confidence(Iterable<Joint3DPoint> joints) {
+    final values = joints
+        .map(
+          (joint) => joint.presence == null
+              ? joint.confidence
+              : math.min(joint.confidence, joint.presence!).toDouble(),
+        )
+        .toList();
+    if (values.isEmpty || values.any((value) => !value.isFinite)) return 0.0;
+    return values.reduce((a, b) => math.min(a, b).toDouble());
+  }
+
+  static BiomechanicsEvaluationFrame _unavailable({
+    required HumanTrackingPayload payload,
+    required BiomechanicsEvaluationStatus status,
+    required String instruction,
+    bool humanDetected = false,
+  }) {
+    return BiomechanicsEvaluationFrame(
+      isHumanDetected: humanDetected,
+      trackingState: payload.trackingState,
+      status: status,
+      techniqueEvaluationAvailable: false,
+      overallTechniqueScore: null,
+      torsoInclination: null,
+      limbSymmetryScore: null,
+      jointResults: const {},
+      primaryInstruction: instruction,
+    );
+  }
+
+  /// Suppress a frame-level technique score when the temporal gate rejects the
+  /// sample.  The geometric engine may have enough landmarks for a snapshot,
+  /// but squat coaching requires a valid timestamped temporal sample as well.
+  static BiomechanicsEvaluationFrame suppressTechniqueEvaluation({
+    required BiomechanicsEvaluationFrame evaluation,
+    required BiomechanicsEvaluationStatus status,
+    required String instruction,
+  }) {
+    return BiomechanicsEvaluationFrame(
+      isHumanDetected: evaluation.isHumanDetected,
+      trackingState: evaluation.trackingState,
+      status: status,
+      techniqueEvaluationAvailable: false,
+      overallTechniqueScore: null,
+      torsoInclination: null,
+      limbSymmetryScore: null,
+      jointResults: const {},
+      primaryInstruction: instruction,
+    );
+  }
+
+  /// Evaluates only supplied landmarks. There are no synthetic anatomical
+  /// points, default angles, or green results for low-confidence joints.
   static BiomechanicsEvaluationFrame evaluateFrame({
     required HumanTrackingPayload payload,
     required SkillMovementPhase phaseTarget,
+    String skillId = 'sk_3',
   }) {
-    if (!payload.humanDetected || payload.joints.isEmpty) {
-      return BiomechanicsEvaluationFrame(
-        isHumanDetected: false,
-        trackingState: payload.trackingState,
-        overallTechniqueScore: 0.0,
-        torsoInclination: 0.0,
-        limbSymmetryScore: 0.0,
-        jointResults: const {},
-        primaryInstruction: 'SEARCHING FOR HUMAN IN FRAME...',
+    if (!payload.humanDetected ||
+        payload.trackingState == HumanDetectionState.searchingForHuman) {
+      return _unavailable(
+        payload: payload,
+        status: BiomechanicsEvaluationStatus.trackingLost,
+        instruction: 'SEARCHING FOR HUMAN IN FRAME...',
+      );
+    }
+    if (payload.trackingState == HumanDetectionState.bodyNotClear ||
+        payload.trackingState == HumanDetectionState.multiplePeopleDetected) {
+      return _unavailable(
+        payload: payload,
+        status: BiomechanicsEvaluationStatus.lowConfidence,
+        instruction: 'STEP BACK AND KEEP YOUR FULL BODY CLEARLY VISIBLE.',
+        humanDetected: true,
+      );
+    }
+    final joints = payload.joints;
+    Joint3DPoint? get(String name) => joints[name];
+    final required = _requiredJointsForSkill(skillId);
+    final missing = required.where((name) => get(name) == null).toList();
+    if (missing.isNotEmpty) {
+      return _unavailable(
+        payload: payload,
+        status: BiomechanicsEvaluationStatus.insufficientData,
+        instruction: 'KEEP THE REQUIRED JOINTS VISIBLE TO CONTINUE.',
+        humanDetected: true,
+      );
+    }
+    final requiredJoints = required.map((name) => get(name)!).toList();
+    final confidence = _confidence(requiredJoints);
+    if (confidence < localConfidenceThreshold) {
+      return _unavailable(
+        payload: payload,
+        status: BiomechanicsEvaluationStatus.lowConfidence,
+        instruction:
+            'MOVE INTO BETTER LIGHT AND KEEP THE REQUIRED JOINTS VISIBLE.',
+        humanDetected: true,
       );
     }
 
-    final joints = payload.joints;
-    final neck = joints['neck'] ?? const Joint3DPoint(x: 0, y: 0.70, z: 0);
-    final lShoulder = joints['leftShoulder'] ?? const Joint3DPoint(x: -0.22, y: 0.65, z: 0);
-    final lElbow = joints['leftElbow'] ?? const Joint3DPoint(x: -0.38, y: 0.35, z: 0.05);
-    final lWrist = joints['leftWrist'] ?? const Joint3DPoint(x: -0.45, y: 0.10, z: 0.10);
-    final spine = joints['spine'] ?? const Joint3DPoint(x: 0, y: 0.30, z: 0);
-    final lHip = joints['leftHip'] ?? const Joint3DPoint(x: -0.15, y: 0.10, z: 0);
-    final rHip = joints['rightHip'] ?? const Joint3DPoint(x: 0.15, y: 0.10, z: 0);
-    final lKnee = joints['leftKnee'] ?? const Joint3DPoint(x: -0.18, y: -0.30, z: -0.05);
-    final rKnee = joints['rightKnee'] ?? const Joint3DPoint(x: 0.18, y: -0.30, z: -0.05);
-    final lAnkle = joints['leftAnkle'] ?? const Joint3DPoint(x: -0.20, y: -0.70, z: 0);
-    final rAnkle = joints['rightAnkle'] ?? const Joint3DPoint(x: 0.20, y: -0.70, z: 0);
+    final coordinateSpace = payload.coordinateSpace;
+    final leftElbowAngle = _angleIfPresent(
+      get,
+      'leftShoulder',
+      'leftElbow',
+      'leftWrist',
+      coordinateSpace,
+    );
+    final rightElbowAngle = _angleIfPresent(
+      get,
+      'rightShoulder',
+      'rightElbow',
+      'rightWrist',
+      coordinateSpace,
+    );
+    final leftKneeAngle = _angleIfPresent(
+      get,
+      'leftHip',
+      'leftKnee',
+      'leftAnkle',
+      coordinateSpace,
+    );
+    final rightKneeAngle = _angleIfPresent(
+      get,
+      'rightHip',
+      'rightKnee',
+      'rightAnkle',
+      coordinateSpace,
+    );
+    final leftHipAngle = _angleIfPresent(
+      get,
+      'leftShoulder',
+      'leftHip',
+      'leftKnee',
+      coordinateSpace,
+    );
+    final rightHipAngle = _angleIfPresent(
+      get,
+      'rightShoulder',
+      'rightHip',
+      'rightKnee',
+      coordinateSpace,
+    );
+    final torsoAngle =
+        get('leftShoulder') != null &&
+            get('rightShoulder') != null &&
+            get('leftHip') != null &&
+            get('rightHip') != null
+        ? calculateTorsoInclination(
+            get('leftShoulder')!,
+            get('rightShoulder')!,
+            get('leftHip')!,
+            get('rightHip')!,
+            coordinateSpace: coordinateSpace,
+          )
+        : null;
+    final calculated = <String, double?>{
+      'left_elbow_angle': leftElbowAngle,
+      'right_elbow_angle': rightElbowAngle,
+      'left_knee_angle': leftKneeAngle,
+      'right_knee_angle': rightKneeAngle,
+      'left_hip_angle': leftHipAngle,
+      'right_hip_angle': rightHipAngle,
+      'torso_inclination': torsoAngle,
+    };
+    final requiredMeasurements = _requiredMeasurementsForSkill(skillId);
+    if (requiredMeasurements.any((name) => calculated[name] == null)) {
+      return _unavailable(
+        payload: payload,
+        status: BiomechanicsEvaluationStatus.insufficientData,
+        instruction:
+            'HOLD A STEADY POSE SO THE REQUIRED MEASUREMENTS CAN BE CALCULATED.',
+        humanDetected: true,
+      );
+    }
 
-    // Calculate actual 3D joint angles
-    final lElbowAngle = calculate3DAngle(lShoulder, lElbow, lWrist);
-    final lKneeAngle = calculate3DAngle(lHip, lKnee, lAnkle);
-    final rKneeAngle = calculate3DAngle(rHip, rKnee, rAnkle);
-    final torsoAngle = calculateTorsoInclination(spine, neck);
-    final symmetryScore = calculateLimbSymmetry(lKneeAngle, rKneeAngle);
-
-    final Map<String, JointEvaluationResult> jointResults = {};
-    double totalDeduction = 0.0;
-    String topCorrection = 'HUMAN LOCKED: STANCE ALIGNED ✓';
-
+    final symmetry = calculateLimbSymmetry(leftKneeAngle, rightKneeAngle);
+    final measurements = <String, double>{
+      'elbow': _average(leftElbowAngle, rightElbowAngle),
+      'knee': _average(leftKneeAngle, rightKneeAngle),
+      'hip': _average(leftHipAngle, rightHipAngle),
+      'torso': torsoAngle ?? 0.0,
+    };
+    final results = <String, JointEvaluationResult>{};
+    var deduction = 0.0;
+    var topCorrection = 'HUMAN LOCKED: MEASUREMENTS AVAILABLE ✓';
     for (final entry in phaseTarget.targets.entries) {
-      final key = entry.key;
-      final targetSpec = entry.value;
-
-      double currentVal = 0.0;
-      double jointConf = 1.0;
-
-      if (key == 'elbow') {
-        currentVal = lElbowAngle;
-        jointConf = (lShoulder.confidence + lElbow.confidence + lWrist.confidence) / 3.0;
-      } else if (key == 'knee') {
-        currentVal = lKneeAngle;
-        jointConf = (lHip.confidence + lKnee.confidence + lAnkle.confidence) / 3.0;
-      } else if (key == 'torso') {
-        currentVal = torsoAngle;
-        jointConf = (spine.confidence + neck.confidence) / 2.0;
-      } else if (key == 'hip') {
-        currentVal = calculate3DAngle(lShoulder, lHip, lKnee);
-        jointConf = (lShoulder.confidence + lHip.confidence + lKnee.confidence) / 3.0;
-      } else {
-        currentVal = lElbowAngle;
-      }
-
-      // Do NOT trigger corrections if joint confidence is too low (< 0.60)
-      if (jointConf < 0.60) {
-        jointResults[key] = JointEvaluationResult(
-          jointName: targetSpec.jointName,
-          currentAngle: currentVal,
-          targetAngle: targetSpec.targetAngle,
-          angleDifference: 0.0,
-          severity: BiomechanicalErrorSeverity.green,
-          correctionPrompt: 'JOINT NOT VISIBLE',
-          confidence: jointConf,
+      final target = entry.value;
+      final current = measurements[entry.key];
+      if (current == null) {
+        results[entry.key] = JointEvaluationResult(
+          jointName: target.jointName,
+          currentAngle: null,
+          targetAngle: target.targetAngle,
+          angleDifference: null,
+          severity: BiomechanicalErrorSeverity.unavailable,
+          correctionPrompt: 'MEASUREMENT UNAVAILABLE',
+          confidence: 0.0,
         );
         continue;
       }
-
-      final diff = currentVal - targetSpec.targetAngle;
+      final diff = current - target.targetAngle;
       final absDiff = diff.abs();
-
-      BiomechanicalErrorSeverity severity;
-      String prompt;
-
-      if (currentVal >= targetSpec.minAcceptableAngle && currentVal <= targetSpec.maxAcceptableAngle) {
-        severity = BiomechanicalErrorSeverity.green;
-        prompt = '${targetSpec.jointName.toUpperCase()} ALIGNED ✓';
-      } else if (absDiff <= 15.0) {
-        severity = BiomechanicalErrorSeverity.yellow;
-        final delta = absDiff.toInt();
-        prompt = diff < 0 ? '${targetSpec.increasePrompt} $delta°' : '${targetSpec.decreasePrompt} $delta°';
-        totalDeduction += 6.0;
+      final severity =
+          current >= target.minAcceptableAngle &&
+              current <= target.maxAcceptableAngle
+          ? BiomechanicalErrorSeverity.green
+          : (absDiff <= 15.0
+                ? BiomechanicalErrorSeverity.yellow
+                : BiomechanicalErrorSeverity.red);
+      final prompt = severity == BiomechanicalErrorSeverity.green
+          ? '${target.jointName.toUpperCase()} ALIGNED ✓'
+          : (diff < 0
+                ? '${target.increasePrompt} ${absDiff.toInt()}°'
+                : '${target.decreasePrompt} ${absDiff.toInt()}°');
+      if (severity == BiomechanicalErrorSeverity.yellow) {
+        deduction += 6;
         topCorrection = prompt;
-      } else {
-        severity = BiomechanicalErrorSeverity.red;
-        final delta = absDiff.toInt();
-        prompt = diff < 0 ? '${targetSpec.increasePrompt} $delta°' : '${targetSpec.decreasePrompt} $delta°';
-        totalDeduction += 15.0;
+      } else if (severity == BiomechanicalErrorSeverity.red) {
+        deduction += 15;
         topCorrection = prompt;
       }
-
-      jointResults[key] = JointEvaluationResult(
-        jointName: targetSpec.jointName,
-        currentAngle: currentVal,
-        targetAngle: targetSpec.targetAngle,
+      results[entry.key] = JointEvaluationResult(
+        jointName: target.jointName,
+        currentAngle: current,
+        targetAngle: target.targetAngle,
         angleDifference: diff,
         severity: severity,
         correctionPrompt: prompt,
-        confidence: jointConf,
+        confidence: confidence,
       );
     }
-
-    final score = math.max(0.0, math.min(100.0, 100.0 - totalDeduction));
-
     return BiomechanicsEvaluationFrame(
       isHumanDetected: true,
       trackingState: payload.trackingState,
-      overallTechniqueScore: score,
+      status: BiomechanicsEvaluationStatus.valid,
+      techniqueEvaluationAvailable: true,
+      overallTechniqueScore: (100 - deduction).clamp(0.0, 100.0).toDouble(),
       torsoInclination: torsoAngle,
-      limbSymmetryScore: symmetryScore,
-      jointResults: jointResults,
+      limbSymmetryScore: symmetry,
+      jointResults: results,
       primaryInstruction: topCorrection,
     );
+  }
+
+  static double? _angleIfPresent(
+    Joint3DPoint? Function(String) get,
+    String a,
+    String b,
+    String c,
+    String coordinateSpace,
+  ) {
+    final p1 = get(a);
+    final p2 = get(b);
+    final p3 = get(c);
+    if (p1 == null || p2 == null || p3 == null) return null;
+    return calculateAngle(p1, p2, p3, coordinateSpace: coordinateSpace);
+  }
+
+  static double _average(double? left, double? right) {
+    if (left != null && right != null) return (left + right) / 2.0;
+    return left ?? right ?? 0.0;
+  }
+
+  static List<String> _requiredJointsForSkill(String skillId) {
+    switch (skillId) {
+      case 'squat':
+      case 'sk_squat':
+      case 'sk_3':
+        return const [
+          'leftShoulder',
+          'rightShoulder',
+          'leftHip',
+          'rightHip',
+          'leftKnee',
+          'rightKnee',
+          'leftAnkle',
+          'rightAnkle',
+        ];
+      case 'push_up':
+      case 'tricep_push_up':
+        return const [
+          'leftShoulder',
+          'rightShoulder',
+          'leftElbow',
+          'rightElbow',
+          'leftWrist',
+          'rightWrist',
+          'leftHip',
+          'rightHip',
+          'leftAnkle',
+          'rightAnkle',
+        ];
+      case 'seated_chest_fly':
+      case 'boxing_jab':
+        return const [
+          'leftShoulder',
+          'rightShoulder',
+          'leftElbow',
+          'rightElbow',
+          'leftWrist',
+          'rightWrist',
+          'leftHip',
+          'rightHip',
+        ];
+      case 'bent_over_row':
+        return const [
+          'leftShoulder',
+          'rightShoulder',
+          'leftElbow',
+          'rightElbow',
+          'leftWrist',
+          'rightWrist',
+          'leftHip',
+          'rightHip',
+          'leftKnee',
+          'rightKnee',
+        ];
+      case 'basketball_shooting':
+      case 'cricket_batting':
+        return const [
+          'leftShoulder',
+          'rightShoulder',
+          'leftElbow',
+          'rightElbow',
+          'leftWrist',
+          'rightWrist',
+          'leftHip',
+          'rightHip',
+          'leftKnee',
+          'rightKnee',
+          'leftAnkle',
+          'rightAnkle',
+        ];
+      default:
+        return const ['leftShoulder', 'rightShoulder', 'leftHip', 'rightHip'];
+    }
+  }
+
+  static List<String> _requiredMeasurementsForSkill(String skillId) {
+    switch (skillId) {
+      case 'squat':
+      case 'sk_squat':
+      case 'sk_3':
+        return const [
+          'left_knee_angle',
+          'right_knee_angle',
+          'torso_inclination',
+        ];
+      case 'push_up':
+      case 'tricep_push_up':
+      case 'boxing_jab':
+      case 'seated_chest_fly':
+        return const [
+          'left_elbow_angle',
+          'right_elbow_angle',
+          'torso_inclination',
+        ];
+      case 'bent_over_row':
+        return const [
+          'left_elbow_angle',
+          'right_elbow_angle',
+          'left_hip_angle',
+          'right_hip_angle',
+          'torso_inclination',
+        ];
+      case 'basketball_shooting':
+      case 'cricket_batting':
+        return const [
+          'left_elbow_angle',
+          'right_elbow_angle',
+          'left_knee_angle',
+          'right_knee_angle',
+          'torso_inclination',
+        ];
+      default:
+        return const ['torso_inclination'];
+    }
   }
 }

@@ -34,7 +34,9 @@ class EmptyStateWidget extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.primaryBlue.withValues(alpha: 0.15),
-                  border: Border.all(color: AppColors.primaryBlue.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: AppColors.primaryBlue.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Icon(icon, size: 48, color: AppColors.cyanGlow),
               ),
@@ -59,10 +61,7 @@ class EmptyStateWidget extends StatelessWidget {
               ),
               if (buttonText != null && onButtonPressed != null) ...[
                 const SizedBox(height: 24),
-                GradientButton(
-                  text: buttonText!,
-                  onPressed: onButtonPressed!,
-                ),
+                GradientButton(text: buttonText!, onPressed: onButtonPressed!),
               ],
             ],
           ),

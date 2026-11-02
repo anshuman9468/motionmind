@@ -46,7 +46,7 @@ class GlassContainer extends StatelessWidget {
                   blurRadius: 20,
                   spreadRadius: 1,
                   offset: const Offset(0, 4),
-                )
+                ),
               ]
             : null,
       ),
@@ -58,13 +58,16 @@ class GlassContainer extends StatelessWidget {
             duration: const Duration(milliseconds: 200),
             padding: padding ?? const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: backgroundColor ?? AppColors.surface.withValues(alpha: 0.4),
+              color:
+                  backgroundColor ?? AppColors.surface.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(borderRadius),
               border: Border.all(
                 color: borderColor ?? AppColors.glassBorder,
                 width: 1,
               ),
-              gradient: backgroundColor == null ? AppColors.glassGradient : null,
+              gradient: backgroundColor == null
+                  ? AppColors.glassGradient
+                  : null,
             ),
             child: child,
           ),

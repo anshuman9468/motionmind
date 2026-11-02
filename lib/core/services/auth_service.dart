@@ -5,7 +5,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 abstract class AuthService {
   User? get currentUser;
   Stream<User?> get authStateChanges;
-  
+
   Future<User?> signInWithEmail(String email, String password);
   Future<User?> signUpWithEmail(String email, String password);
   Future<User?> signInWithGoogle();
@@ -55,19 +55,21 @@ class FirebaseAuthService implements AuthService {
       idToken: googleAuth.idToken,
     );
 
-    final UserCredential userCredential = await _auth.signInWithCredential(credential);
+    final UserCredential userCredential = await _auth.signInWithCredential(
+      credential,
+    );
     return userCredential.user;
   }
 
   @override
   Future<User?> signInWithApple() async {
-    final AuthorizationCredentialAppleID appleCredential = 
+    final AuthorizationCredentialAppleID appleCredential =
         await SignInWithApple.getAppleIDCredential(
-      scopes: [
-        AppleIDAuthorizationScopes.email,
-        AppleIDAuthorizationScopes.fullName,
-      ],
-    );
+          scopes: [
+            AppleIDAuthorizationScopes.email,
+            AppleIDAuthorizationScopes.fullName,
+          ],
+        );
 
     final OAuthProvider oAuthProvider = OAuthProvider("apple.com");
     final AuthCredential credential = oAuthProvider.credential(
@@ -75,7 +77,9 @@ class FirebaseAuthService implements AuthService {
       rawNonce: null,
     );
 
-    final UserCredential userCredential = await _auth.signInWithCredential(credential);
+    final UserCredential userCredential = await _auth.signInWithCredential(
+      credential,
+    );
     return userCredential.user;
   }
 
@@ -97,7 +101,7 @@ class FirebaseAuthService implements AuthService {
 // Fallback Mock service if Firebase is not initialized yet
 class MockAuthService implements AuthService {
   User? _mockUser;
-  
+
   @override
   User? get currentUser => _mockUser;
 

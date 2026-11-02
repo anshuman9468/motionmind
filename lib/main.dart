@@ -5,11 +5,7 @@ import 'core/router/app_router.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(
-    const ProviderScope(
-      child: SkillVerseApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: SkillVerseApp()));
 }
 
 class SkillVerseApp extends StatelessWidget {

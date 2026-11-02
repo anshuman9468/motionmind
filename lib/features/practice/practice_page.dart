@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,13 +8,18 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_container.dart';
 import '../../core/widgets/gradient_button.dart';
 import 'models/skill_biomechanics.dart';
+import 'models/exercise_registry.dart';
 import 'services/biomechanics_engine.dart';
+import 'services/temporal_squat_tracker.dart';
+import 'services/temporal_exercise_tracker.dart';
 import 'widgets/human_detection_overlay.dart';
 import 'widgets/ar_biomechanics_painter.dart';
 import 'widgets/biomechanical_hud_panel.dart';
 
 class PracticePage extends StatefulWidget {
-  const PracticePage({super.key});
+  const PracticePage({super.key, required this.exerciseId});
+
+  final String exerciseId;
 
   @override
   State<PracticePage> createState() => _PracticePageState();
@@ -35,20 +39,21 @@ class _PracticePageState extends State<PracticePage>
   bool _isPaused = false;
   int _secondsElapsed = 0;
   Timer? _sessionTimer;
-  double _caloriesBurned = 0.0;
-  int _practiceScore = 0;
-  final double _professionalSimilarity = 88.4;
+  final String _sessionId = 'session_${DateTime.now().millisecondsSinceEpoch}';
+  int? _practiceScore;
   double? _onDeviceQualityScore;
 
   // Mode toggles
   bool _isGhostModeEnabled = false;
   bool _isReplayModeEnabled = false;
+  PoseOverlayMode _overlayMode = PoseOverlayMode.minimal;
   // Native Platform Channel Bridge
   static const _visionChannel = MethodChannel(
     'com.skillverse.ai/vision_tracking',
   );
   HumanTrackingPayload _currentTrackingPayload = HumanTrackingPayload.empty();
   late SkillBiomechanicsProfile _currentBiomechanicsProfile;
+  late ExerciseDefinition _exercise;
   int _currentPhaseIndex = 0;
   bool _isPoseFrameProcessing = false;
   bool _onDeviceTrackingReady = false;
@@ -61,8 +66,17 @@ class _PracticePageState extends State<PracticePage>
   bool _backendRequestInFlight = false;
   String _backendStatus = 'Waiting for pose';
   ApiPerformanceResult? _backendPerformance;
+  ApiBiomechanicsResult? _backendBiomechanics;
+  final SquatTemporalTracker _temporalTracker = SquatTemporalTracker();
+  SquatTemporalResult _temporalResult = const SquatTemporalResult.initial();
+  late ExerciseTemporalTracker _exerciseTemporalTracker;
+  late ExerciseTemporalResult _exerciseTemporalResult;
+  int? _latestPayloadTimestampUs;
+  final Set<String> _sessionVerifiedFindings = <String>{};
 
   late AnimationController _pulseController;
+
+  bool get _isSquatProfile => _exercise.id == 'squat';
 
   @override
   void initState() {
@@ -72,10 +86,10 @@ class _PracticePageState extends State<PracticePage>
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
 
-    _currentBiomechanicsProfile = SkillBiomechanicsProfile.getProfileForSkill(
-      'sk_1',
-      'Zeus Bolt: Basketball Jump Shot',
-    );
+    _exercise = ExerciseRegistry.byId(widget.exerciseId);
+    _currentBiomechanicsProfile = _exercise.profile;
+    _exerciseTemporalTracker = ExerciseTemporalTracker(_exercise);
+    _exerciseTemporalResult = ExerciseTemporalResult.initial(_exercise.name);
     _initializeCamera();
     _startSession();
   }
@@ -149,6 +163,10 @@ class _PracticePageState extends State<PracticePage>
       return;
     }
 
+    _resetTemporalAfterInterruption(
+      'CAMERA CHANGED. REPOSITION IN A SIDE VIEW TO RESUME.',
+    );
+
     setState(() {
       _isCameraInitialized = false;
       _selectedCameraIndex = (_selectedCameraIndex + 1) % _cameras.length;
@@ -184,7 +202,6 @@ class _PracticePageState extends State<PracticePage>
       if (!_isPaused && !_isReplayModeEnabled) {
         setState(() {
           _secondsElapsed++;
-          _caloriesBurned += 0.15;
         });
       }
     });
@@ -209,6 +226,9 @@ class _PracticePageState extends State<PracticePage>
         });
       }
     } catch (error) {
+      _resetTemporalAfterInterruption(
+        'ON-DEVICE POSE INFERENCE FAILED. REPOSITION AND TRY AGAIN.',
+      );
       if (mounted) {
         setState(() {
           _onDeviceTrackingReady = false;
@@ -235,6 +255,9 @@ class _PracticePageState extends State<PracticePage>
     try {
       await controller.startImageStream(_submitPoseFrame);
     } catch (error) {
+      _resetTemporalAfterInterruption(
+        'ON-DEVICE POSE INFERENCE FAILED. REPOSITION AND TRY AGAIN.',
+      );
       if (mounted) {
         setState(() => _onDevicePoseError = 'Could not read camera frames.');
       }
@@ -269,8 +292,15 @@ class _PracticePageState extends State<PracticePage>
           'height': image.height,
           'rotationDegrees': camera.sensorOrientation,
           'cameraFacing': camera.lensDirection.name,
-          // The supplied model uses five training-label IDs. The current
-          // SkillVerse profiles are not those labels, so use its generic head.
+          // The native bitmap is not horizontally flipped before MediaPipe;
+          // preview mirroring must not be mistaken for inference mirroring.
+          'mirrored': false,
+          'sessionId': _sessionId,
+          'skillId': _exercise.id,
+          'skillName': _exercise.name,
+          'subjectView': _exercise.supportedView,
+          // The optional TFLite model is a separate raw signal; it is not the
+          // deterministic technique score and is never used as XP.
           'qualitySkillId': 0,
           'planes': image.planes
               .map(
@@ -285,6 +315,10 @@ class _PracticePageState extends State<PracticePage>
       );
       if (response != null && mounted) {
         _updateTrackingPayload(HumanTrackingPayload.fromJson(response));
+      } else if (mounted) {
+        _resetTemporalAfterInterruption(
+          'NO POSE FRAME RECEIVED. REPOSITION AND TRY AGAIN.',
+        );
       }
     } catch (error) {
       if (mounted) {
@@ -297,6 +331,9 @@ class _PracticePageState extends State<PracticePage>
         _onDeviceTrackingReady = false;
         await _initializeOnDeviceTracking();
       }
+      _resetTemporalAfterInterruption(
+        'ON-DEVICE POSE INFERENCE FAILED. REPOSITION AND TRY AGAIN.',
+      );
       debugPrint('MediaPipe frame inference failed: $error');
     } finally {
       _isPoseFrameProcessing = false;
@@ -305,22 +342,42 @@ class _PracticePageState extends State<PracticePage>
 
   void _updateTrackingPayload(HumanTrackingPayload payload) {
     if (!mounted) return;
+    final squatResult = _isSquatProfile
+        ? _temporalTracker.process(payload)
+        : null;
+    final exerciseResult = _isSquatProfile
+        ? null
+        : _exerciseTemporalTracker.process(payload);
+    _sessionVerifiedFindings.addAll(
+      squatResult?.verifiedFindings ??
+          exerciseResult?.verifiedFindings ??
+          const [],
+    );
     setState(() {
       _currentTrackingPayload = payload;
+      _latestPayloadTimestampUs = payload.timestampUs;
+      if (squatResult != null) _temporalResult = squatResult;
+      if (exerciseResult != null) _exerciseTemporalResult = exerciseResult;
       _onDeviceQualityScore = payload.onDeviceQualityScore;
       _onDevicePoseError = null;
+      // Do not carry a previous frame's quality result into the next frame;
+      // every displayed backend result must correspond to current telemetry.
+      _backendPerformance = null;
+      _backendBiomechanics = null;
+      _practiceScore = null;
       if (_backendStatus == 'On-device pose unavailable') {
         _backendStatus = 'Waiting for backend';
-      }
-      if (payload.onDeviceQualityScore != null) {
-        _practiceScore = payload.onDeviceQualityScore!.round();
       }
     });
     _scheduleBackendAnalysis(payload);
   }
 
   void _scheduleBackendAnalysis(HumanTrackingPayload payload) {
-    if (!payload.humanDetected || payload.joints.isEmpty) return;
+    if (payload.timestampUs <= 0) {
+      if (mounted)
+        setState(() => _backendStatus = 'Tracking lost • no timestamp');
+      return;
+    }
 
     final now = DateTime.now();
     if (_backendRequestInFlight || now.isBefore(_nextBackendAttempt)) return;
@@ -346,18 +403,47 @@ class _PracticePageState extends State<PracticePage>
         payload: payload,
       );
       final performance = await _apiService.evaluatePerformance(biomechanics);
+      final temporal = payload.timestampUs > 0
+          ? _isSquatProfile
+                ? await _apiService.analyzeSquatTemporal(
+                    userId: _userId,
+                    sessionId: _sessionId,
+                    timestampUs: payload.timestampUs,
+                    payload: payload,
+                    biomechanics: biomechanics,
+                  )
+                : await _apiService.analyzeExerciseTemporal(
+                    userId: _userId,
+                    sessionId: _sessionId,
+                    payload: payload,
+                    biomechanics: biomechanics,
+                  )
+          : null;
+      if (temporal != null && temporal.status == 'VALID') {
+        _sessionVerifiedFindings.addAll(temporal.verifiedFindings);
+      }
+      final gatedPerformance = temporal != null && temporal.status != 'VALID'
+          ? null
+          : performance;
 
-      if (mounted) {
+      if (mounted && payload.timestampUs == _latestPayloadTimestampUs) {
+        final temporalSummary = temporal == null
+            ? ''
+            : ' • ${temporal.phaseLabel ?? temporal.phase} • ${temporal.repetitionCount} reps';
         setState(() {
-          _backendPerformance = performance;
-          _backendStatus = 'Online • ${vision.detectedJointsCount} joints';
+          _backendBiomechanics = biomechanics;
+          _backendPerformance = gatedPerformance;
+          _practiceScore = gatedPerformance?.xp;
+          _backendStatus =
+              'Online • ${vision.status} • ${vision.detectedJointsCount} landmarks'
+              '$temporalSummary';
         });
       }
     } catch (error) {
       // The local camera and biomechanics HUD remain usable when the backend
       // is stopped or the phone is temporarily offline.
       _nextBackendAttempt = DateTime.now().add(const Duration(seconds: 5));
-      if (mounted) {
+      if (mounted && payload.timestampUs == _latestPayloadTimestampUs) {
         setState(() => _backendStatus = 'Offline • local analysis');
       }
       debugPrint('MotionMind backend unavailable: $error');
@@ -368,10 +454,65 @@ class _PracticePageState extends State<PracticePage>
 
   void _togglePause() {
     HapticFeedback.selectionClick();
+    if (!_isPaused) {
+      unawaited(_resetBackendTemporal());
+      _resetTemporalAfterInterruption(
+        'SESSION PAUSED. REPOSITION BEFORE RESUMING TRACKING.',
+      );
+    }
     setState(() {
       _isPaused = !_isPaused;
     });
   }
+
+  Future<void> _resetBackendTemporal() async {
+    if (!_isSquatProfile) return;
+    try {
+      await _apiService.resetSquatTemporal(
+        userId: _userId,
+        sessionId: _sessionId,
+      );
+    } catch (error) {
+      // Local tracking remains authoritative when the backend is offline.
+      debugPrint('Could not reset backend temporal tracker: $error');
+    }
+  }
+
+  void _resetTemporalAfterInterruption(String message) {
+    if (!mounted) return;
+    final temporalResult = _temporalTracker.resetAfterInterruption(
+      message: message,
+    );
+    final exerciseResult = _exerciseTemporalTracker.resetAfterInterruption(
+      message,
+    );
+    setState(() {
+      _currentTrackingPayload = HumanTrackingPayload.empty();
+      _latestPayloadTimestampUs = null;
+      _temporalResult = temporalResult;
+      _exerciseTemporalResult = exerciseResult;
+      _onDeviceQualityScore = null;
+      _backendPerformance = null;
+      _backendBiomechanics = null;
+      _practiceScore = null;
+      _backendStatus = 'Tracking lost';
+    });
+  }
+
+  int get _activeRepetitionCount => _isSquatProfile
+      ? _temporalResult.repetitionCount
+      : _exerciseTemporalResult.repetitionCount;
+
+  String get _activePhaseLabel => _isSquatProfile
+      ? _temporalResult.phase.label
+      : _exerciseTemporalResult.phaseLabel;
+
+  BiomechanicsEvaluationStatus get _activeTemporalStatus =>
+      _isSquatProfile ? _temporalResult.status : _exerciseTemporalResult.status;
+
+  String get _activeTemporalMessage => _isSquatProfile
+      ? _temporalResult.message
+      : _exerciseTemporalResult.message;
 
   void _finishSession() {
     HapticFeedback.heavyImpact();
@@ -402,7 +543,7 @@ class _PracticePageState extends State<PracticePage>
               ),
               const SizedBox(height: 16),
               const Text(
-                'Trial Complete',
+                'Session Summary',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 20,
@@ -411,7 +552,9 @@ class _PracticePageState extends State<PracticePage>
               ),
               const SizedBox(height: 8),
               Text(
-                'Pose telemetry compiled successfully.',
+                _activeRepetitionCount > 0
+                    ? 'Verified ${_exercise.name.toLowerCase()} movement telemetry recorded for this session.'
+                    : 'Session ended without a verified ${_exercise.name.toLowerCase()} repetition.',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.8),
                   fontSize: 13,
@@ -424,15 +567,12 @@ class _PracticePageState extends State<PracticePage>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildStatSummary('Score', '$_practiceScore XP'),
                   _buildStatSummary(
-                    'Similarity',
-                    '${_professionalSimilarity.toStringAsFixed(1)}%',
+                    'XP',
+                    _practiceScore == null ? 'Unavailable' : '$_practiceScore',
                   ),
-                  _buildStatSummary(
-                    'Calories',
-                    '${_caloriesBurned.toInt()} kcal',
-                  ),
+                  _buildStatSummary('Reps', '$_activeRepetitionCount'),
+                  _buildStatSummary('Calories', 'Unavailable'),
                 ],
               ),
               const SizedBox(height: 24),
@@ -452,27 +592,55 @@ class _PracticePageState extends State<PracticePage>
 
   Future<void> _persistSession() async {
     final mistakes = _backendPerformance?.detectedMistakes ?? const <String>[];
-    final finalScore = _backendPerformance?.score ?? _practiceScore;
+    final verifiedFindings = <String>{
+      ...?_backendPerformance?.verifiedFindings,
+      ..._sessionVerifiedFindings,
+    }.toList(growable: false);
+    final qualityScore = _backendPerformance?.qualityScore;
+    final finalScore = qualityScore?.round();
 
     try {
       await _apiService.generateCoachFeedback(
         detectedMistakes: mistakes,
-        practiceScore: finalScore,
+        practiceScore: _backendPerformance?.xp,
+        analysisStatus: _backendPerformance?.status,
+        skillId: _currentBiomechanicsProfile.skillId,
+        qualityScore: qualityScore,
+        verifiedFindings: verifiedFindings,
+        verifiedMeasurements: {
+          'left_elbow_angle': _backendBiomechanics?.leftElbowAngle,
+          'right_elbow_angle': _backendBiomechanics?.rightElbowAngle,
+          'left_knee_angle': _backendBiomechanics?.leftKneeAngle,
+          'right_knee_angle': _backendBiomechanics?.rightKneeAngle,
+          'left_hip_angle': _backendBiomechanics?.leftHipAngle,
+          'right_hip_angle': _backendBiomechanics?.rightHipAngle,
+          'torso_inclination': _backendBiomechanics?.torsoInclination,
+          'bilateral_knee_symmetry':
+              _backendBiomechanics?.bilateralKneeSymmetry,
+        },
       );
       final session = ApiSessionRecord(
-        sessionId: 'session_${DateTime.now().millisecondsSinceEpoch}',
+        sessionId: _sessionId,
         userId: _userId,
         durationSeconds: _secondsElapsed,
-        calories: _caloriesBurned,
+        calories: null,
         finalScore: finalScore,
         mistakesLog: mistakes,
+        repetitions: _activeRepetitionCount,
+        exerciseId: _exercise.id,
+        category: _exercise.categoryLabel,
+        trackingQuality: _backendBiomechanics?.measurementConfidence,
+        verifiedFindings: verifiedFindings,
+        subjectView: _exercise.supportedView,
       );
       await _apiService.storeSession(session);
-      await _apiService.updateTwinProfile(
-        userId: _userId,
-        recentMistakes: mistakes,
-        sessionScores: [finalScore],
-      );
+      if (finalScore != null) {
+        await _apiService.updateTwinProfile(
+          userId: _userId,
+          recentMistakes: mistakes,
+          sessionScores: [finalScore],
+        );
+      }
 
       if (mounted) {
         setState(() {
@@ -516,10 +684,19 @@ class _PracticePageState extends State<PracticePage>
   @override
   Widget build(BuildContext context) {
     final currentPhase = _currentBiomechanicsProfile.phases[_currentPhaseIndex];
-    final evalFrame = BiomechanicsEngine.evaluateFrame(
+    final automaticPhaseLabel = _activePhaseLabel;
+    var evalFrame = BiomechanicsEngine.evaluateFrame(
       payload: _currentTrackingPayload,
       phaseTarget: currentPhase,
+      skillId: _currentBiomechanicsProfile.skillId,
     );
+    if (_activeTemporalStatus != BiomechanicsEvaluationStatus.valid) {
+      evalFrame = BiomechanicsEngine.suppressTechniqueEvaluation(
+        evaluation: evalFrame,
+        status: _activeTemporalStatus,
+        instruction: _activeTemporalMessage,
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -611,6 +788,7 @@ class _PracticePageState extends State<PracticePage>
                 currentPhase: currentPhase,
                 isGhostModeEnabled: _isGhostModeEnabled,
                 isReplayModeEnabled: _isReplayModeEnabled,
+                overlayMode: _overlayMode,
                 pulseProgress: _pulseController.value,
               ),
             ),
@@ -649,94 +827,47 @@ class _PracticePageState extends State<PracticePage>
                       ),
                     ),
 
-                    // Skill Profile Selector Menu
                     Expanded(
                       child: Align(
                         alignment: Alignment.center,
-                        child: PopupMenuButton<SkillBiomechanicsProfile>(
-                          initialValue: _currentBiomechanicsProfile,
-                          tooltip: 'Select Skill Profile',
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          constraints: const BoxConstraints(maxWidth: 230),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
                           ),
-                          color: AppColors.surface,
-                          onSelected: (profile) {
-                            HapticFeedback.selectionClick();
-                            setState(() {
-                              _currentBiomechanicsProfile = profile;
-                              _currentPhaseIndex = 0;
-                            });
-                          },
-                          itemBuilder: (context) {
-                            return SkillBiomechanicsProfile.getAllProfiles()
-                                .map((p) {
-                                  return PopupMenuItem<
-                                    SkillBiomechanicsProfile
-                                  >(
-                                    value: p,
-                                    child: Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.fitness_center_rounded,
-                                          color: AppColors.cyanGlow,
-                                          size: 16,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          p.skillTitle,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                })
-                                .toList();
-                          },
-                          child: Container(
-                            constraints: const BoxConstraints(maxWidth: 220),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryBlue.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
                               color: AppColors.primaryBlue.withValues(
-                                alpha: 0.25,
-                              ),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: AppColors.cyanGlow,
-                                width: 1.2,
+                                alpha: .75,
                               ),
                             ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.tune_rounded,
-                                  color: AppColors.cyanGlow,
-                                  size: 14,
-                                ),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                  child: Text(
-                                    _currentBiomechanicsProfile.skillTitle
-                                        .split(':')
-                                        .last
-                                        .trim(),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _exercise.icon,
+                                color: AppColors.primaryBlue,
+                                size: 15,
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  _exercise.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -750,6 +881,29 @@ class _PracticePageState extends State<PracticePage>
                         color: AppColors.primaryBlue,
                         size: 24,
                       ),
+                    ),
+                    PopupMenuButton<PoseOverlayMode>(
+                      tooltip: 'Pose overlay mode',
+                      icon: const Icon(
+                        Icons.layers_outlined,
+                        color: Colors.white,
+                        size: 21,
+                      ),
+                      onSelected: (mode) => setState(() => _overlayMode = mode),
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(
+                          value: PoseOverlayMode.off,
+                          child: Text('Overlay off'),
+                        ),
+                        PopupMenuItem(
+                          value: PoseOverlayMode.minimal,
+                          child: Text('Minimal guidance'),
+                        ),
+                        PopupMenuItem(
+                          value: PoseOverlayMode.fullSkeleton,
+                          child: Text('Full skeleton'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -772,17 +926,19 @@ class _PracticePageState extends State<PracticePage>
                     const SizedBox(width: 8),
                     Expanded(
                       child: _buildHudTile(
-                        Icons.local_fire_department_rounded,
-                        '${_caloriesBurned.toStringAsFixed(1)} kcal',
-                        'Calories',
+                        Icons.repeat_rounded,
+                        '$_activeRepetitionCount',
+                        'Reps',
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: _buildHudTile(
                         Icons.auto_awesome_rounded,
-                        '$_practiceScore XP',
-                        'Score',
+                        _backendPerformance?.qualityScore == null
+                            ? 'Unavailable'
+                            : '${_backendPerformance!.qualityScore!.toInt()}%',
+                        'Quality',
                       ),
                     ),
                   ],
@@ -807,7 +963,7 @@ class _PracticePageState extends State<PracticePage>
                       ),
                       if (_onDeviceQualityScore != null)
                         Text(
-                          'On-device TFLite: ${_onDeviceQualityScore!.toStringAsFixed(1)}/100',
+                          'On-device signal (not technique score): ${_onDeviceQualityScore!.toStringAsFixed(1)}/100',
                           style: const TextStyle(
                             color: AppColors.cyanGlow,
                             fontSize: 10,
@@ -834,33 +990,27 @@ class _PracticePageState extends State<PracticePage>
           Positioned(
             left: 10,
             right: 10,
-            bottom: 110,
-            child: BiomechanicalHudPanel(
-              profile: _currentBiomechanicsProfile,
-              currentPhase: currentPhase,
-              evaluation: evalFrame,
-              onNextPhase: () {
-                setState(() {
-                  _currentPhaseIndex =
-                      (_currentPhaseIndex + 1) %
-                      _currentBiomechanicsProfile.phases.length;
-                });
-              },
-              onPrevPhase: () {
-                setState(() {
-                  _currentPhaseIndex =
-                      (_currentPhaseIndex -
-                          1 +
-                          _currentBiomechanicsProfile.phases.length) %
-                      _currentBiomechanicsProfile.phases.length;
-                });
-              },
+            bottom: MediaQuery.of(context).padding.bottom + 160,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 220),
+              child: SingleChildScrollView(
+                child: BiomechanicalHudPanel(
+                  profile: _currentBiomechanicsProfile,
+                  currentPhase: currentPhase,
+                  phaseLabel: automaticPhaseLabel,
+                  automaticPhase: true,
+                  instructionOverride: _activeTemporalMessage,
+                  evaluation: evalFrame,
+                  onNextPhase: () {},
+                  onPrevPhase: () {},
+                ),
+              ),
             ),
           ),
 
           // 5. Bottom control panel actions
           Positioned(
-            bottom: 30,
+            bottom: MediaQuery.of(context).padding.bottom + 16,
             left: 20,
             right: 20,
             child: Column(
@@ -928,17 +1078,21 @@ class _PracticePageState extends State<PracticePage>
   }
 
   Widget _buildTrackingIndicator() {
-    final detected = _currentTrackingPayload.humanDetected;
+    final detected =
+        _currentTrackingPayload.humanDetected &&
+        _currentTrackingPayload.trackingState ==
+            HumanDetectionState.humanLocked;
+    final evaluationReady =
+        detected && _activeTemporalStatus == BiomechanicsEvaluationStatus.valid;
+    final indicatorColor = !detected
+        ? AppColors.roseError
+        : (evaluationReady ? AppColors.emeraldGreen : AppColors.amberWarning);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: (detected ? AppColors.emeraldGreen : AppColors.roseError)
-            .withValues(alpha: 0.2),
+        color: indicatorColor.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: detected ? AppColors.emeraldGreen : AppColors.roseError,
-          width: 1.2,
-        ),
+        border: Border.all(color: indicatorColor, width: 1.2),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -947,14 +1101,18 @@ class _PracticePageState extends State<PracticePage>
             detected
                 ? Icons.person_pin_circle_rounded
                 : Icons.person_off_rounded,
-            color: detected ? AppColors.emeraldGreen : AppColors.roseError,
+            color: indicatorColor,
             size: 14,
           ),
           const SizedBox(width: 6),
           Text(
-            detected ? 'POSE DETECTED' : 'SEARCHING FOR HUMAN',
+            !detected
+                ? 'SEARCHING FOR HUMAN'
+                : (evaluationReady
+                      ? 'POSE • $_activePhaseLabel'
+                      : 'POSE • TRACKING PAUSED'),
             style: TextStyle(
-              color: detected ? AppColors.emeraldGreen : AppColors.roseError,
+              color: indicatorColor,
               fontSize: 10,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.5,
@@ -1041,6 +1199,11 @@ class _PracticePageState extends State<PracticePage>
   }
 }
 
+/// Retained only for source compatibility with older callers. The active
+/// practice screen uses [ARBiomechanicsPainter]; this legacy painter is not
+/// instantiated and intentionally renders nothing so it cannot display
+/// fabricated skeleton coordinates.
+@Deprecated('Use ARBiomechanicsPainter with a real HumanTrackingPayload.')
 class PosePainter extends CustomPainter {
   final double elbowAngle;
   final double backAngle;
@@ -1064,6 +1227,10 @@ class PosePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Never render the former synthetic-pose implementation.
+    return;
+
+    /*
     final center = Offset(size.width / 2, size.height / 2);
 
     // IF NO HUMAN IS IN FRAME: DO NOT DRAW STICK FIGURE ON DOORS OR WALLS!
@@ -1388,6 +1555,7 @@ class PosePainter extends CustomPainter {
       canvas.drawCircle(elbowL, 45, heatmapPaint);
       canvas.drawCircle(kneeR, 40, heatmapPaint);
     }
+    */
   }
 
   @override

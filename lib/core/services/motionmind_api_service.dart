@@ -56,13 +56,116 @@ class MotionMindApiService {
     return ApiPerformanceResult.fromJson(data);
   }
 
+  Future<ApiTemporalResult> analyzeSquatTemporal({
+    required String userId,
+    required String sessionId,
+    required int timestampUs,
+    required HumanTrackingPayload payload,
+    required ApiBiomechanicsResult biomechanics,
+  }) async {
+    final temporalLandmarks = payload.landmarks
+        .where((landmark) => landmark.index != null)
+        .map(
+          (landmark) => {
+            'index': landmark.index,
+            'x': landmark.x,
+            'y': landmark.y,
+            'z': landmark.z,
+            'visibility': landmark.visibility,
+            'presence': landmark.presence,
+          },
+        )
+        .toList(growable: false);
+    final retainedLandmarks = temporalLandmarks.isNotEmpty
+        ? temporalLandmarks
+        : _namedJointsAsCanonicalLandmarks(payload.joints);
+    final data = await _post('/agents/temporal/squat', {
+      'schema_version': payload.schemaVersion,
+      'user_id': userId,
+      'session_id': sessionId,
+      'skill_id': biomechanics.skillId,
+      'timestamp_us': timestampUs,
+      'subject_view': biomechanics.subjectView,
+      'status': biomechanics.status,
+      if (biomechanics.measurementConfidence != null)
+        'measurement_confidence': biomechanics.measurementConfidence,
+      'landmarks': retainedLandmarks,
+      if (biomechanics.leftKneeAngle != null)
+        'left_knee_angle': biomechanics.leftKneeAngle,
+      if (biomechanics.rightKneeAngle != null)
+        'right_knee_angle': biomechanics.rightKneeAngle,
+      if (biomechanics.leftHipAngle != null)
+        'left_hip_angle': biomechanics.leftHipAngle,
+      if (biomechanics.rightHipAngle != null)
+        'right_hip_angle': biomechanics.rightHipAngle,
+      if (biomechanics.torsoInclination != null)
+        'torso_inclination': biomechanics.torsoInclination,
+      if (biomechanics.bilateralKneeSymmetry != null)
+        'bilateral_knee_symmetry': biomechanics.bilateralKneeSymmetry,
+    });
+    return ApiTemporalResult.fromJson(data);
+  }
+
+  Future<void> resetSquatTemporal({
+    required String userId,
+    required String sessionId,
+  }) async {
+    await _delete(
+      '/agents/temporal/squat/${Uri.encodeComponent(userId)}/${Uri.encodeComponent(sessionId)}',
+    );
+  }
+
+  Future<ApiTemporalResult> analyzeExerciseTemporal({
+    required String userId,
+    required String sessionId,
+    required HumanTrackingPayload payload,
+    required ApiBiomechanicsResult biomechanics,
+  }) async {
+    final data = await _post('/agents/temporal/analyze', {
+      'schema_version': payload.schemaVersion,
+      'user_id': userId,
+      'session_id': sessionId,
+      'skill_id': biomechanics.skillId,
+      'timestamp_us': payload.timestampUs,
+      'subject_view': biomechanics.subjectView,
+      'status': biomechanics.status,
+      if (biomechanics.measurementConfidence != null)
+        'measurement_confidence': biomechanics.measurementConfidence,
+      if (biomechanics.leftElbowAngle != null)
+        'left_elbow_angle': biomechanics.leftElbowAngle,
+      if (biomechanics.rightElbowAngle != null)
+        'right_elbow_angle': biomechanics.rightElbowAngle,
+      if (biomechanics.leftHipAngle != null)
+        'left_hip_angle': biomechanics.leftHipAngle,
+      if (biomechanics.rightHipAngle != null)
+        'right_hip_angle': biomechanics.rightHipAngle,
+      if (biomechanics.torsoInclination != null)
+        'torso_inclination': biomechanics.torsoInclination,
+    });
+    return ApiTemporalResult.fromJson(data);
+  }
+
   Future<ApiCoachResponse> generateCoachFeedback({
     required List<String> detectedMistakes,
-    required int practiceScore,
+    int? practiceScore,
+    String? analysisStatus,
+    String? skillId,
+    double? qualityScore,
+    List<String> verifiedFindings = const [],
+    Map<String, double?> verifiedMeasurements = const {},
   }) async {
+    final availableMeasurements = <String, double>{};
+    verifiedMeasurements.forEach((key, value) {
+      if (value != null) availableMeasurements[key] = value;
+    });
     final data = await _post('/agents/coach', {
       'detected_mistakes': detectedMistakes,
-      'practice_score': practiceScore,
+      if (practiceScore != null) 'practice_score': practiceScore,
+      if (analysisStatus != null) 'analysis_status': analysisStatus,
+      if (skillId != null) 'skill_id': skillId,
+      if (qualityScore != null) 'quality_score': qualityScore,
+      'verified_findings': verifiedFindings,
+      'verified_measurements': availableMeasurements,
     });
     return ApiCoachResponse.fromJson(data);
   }
@@ -121,35 +224,95 @@ class MotionMindApiService {
     required String userId,
     required HumanTrackingPayload payload,
   }) {
-    // The backend accepts a list of points. Keep the ordering explicit so its
-    // current index-based calculations receive shoulder/elbow/wrist/hip data.
-    const orderedJoints = [
-      'head',
-      'leftShoulder',
-      'rightShoulder',
-      'leftElbow',
-      'leftWrist',
-      'rightElbow',
-      'rightWrist',
-      'leftHip',
-      'rightHip',
-    ];
+    // The backend consumes the canonical MediaPipe indices. Only landmarks
+    // actually returned by the native tracker are sent; missing landmarks are
+    // omitted so the server can abstain instead of receiving fabricated 0s.
+    final landmarks = payload.landmarks
+        .where((landmark) => landmark.index != null)
+        .map(
+          (landmark) => {
+            'index': landmark.index,
+            'x': landmark.x,
+            'y': landmark.y,
+            'z': landmark.z,
+            'visibility': landmark.visibility,
+            'presence': landmark.presence,
+          },
+        )
+        .toList(growable: false);
+
+    final legacyLandmarks = landmarks.isNotEmpty
+        ? landmarks
+        : _namedJointsAsCanonicalLandmarks(payload.joints);
 
     return {
+      'schema_version': payload.schemaVersion,
       'user_id': userId,
-      'keypoints': orderedJoints.map((name) {
-        final joint = payload.joints[name];
-        return {
-          'x': joint?.x ?? 0.0,
-          'y': joint?.y ?? 0.0,
-          'z': joint?.z ?? 0.0,
-          'visibility': joint?.confidence ?? 0.0,
-        };
-      }).toList(),
+      if (payload.sessionId != null) 'session_id': payload.sessionId,
+      'skill_id': payload.skillId ?? 'unknown',
+      if (payload.skillName != null) 'skill_name': payload.skillName,
+      'landmarks': legacyLandmarks,
+      'coordinate_space': payload.coordinateSpace,
+      if (payload.frameWidth > 0) 'image_width': payload.frameWidth,
+      if (payload.frameHeight > 0) 'image_height': payload.frameHeight,
+      if (payload.timestampUs > 0) 'timestamp_us': payload.timestampUs,
+      'camera_facing': payload.cameraFacing,
+      'subject_view': payload.subjectView,
+      if (payload.mirrored != null) 'mirrored': payload.mirrored,
+      if (payload.rotationDegrees != null)
+        'rotation_degrees': payload.rotationDegrees,
+      'human_detected': payload.humanDetected,
+      'tracking_state': _trackingStateName(payload.trackingState),
       if (payload.onDeviceQualityScore != null)
         'on_device_quality_score': payload.onDeviceQualityScore,
-      'timestamp': DateTime.now().millisecondsSinceEpoch / 1000.0,
     };
+  }
+
+  String _trackingStateName(HumanDetectionState state) {
+    switch (state) {
+      case HumanDetectionState.searchingForHuman:
+        return 'SEARCHING_FOR_HUMAN';
+      case HumanDetectionState.humanLocked:
+        return 'HUMAN_LOCKED';
+      case HumanDetectionState.bodyNotClear:
+        return 'BODY_NOT_CLEAR';
+      case HumanDetectionState.multiplePeopleDetected:
+        return 'MULTIPLE_PEOPLE_DETECTED';
+    }
+  }
+
+  List<Map<String, dynamic>> _namedJointsAsCanonicalLandmarks(
+    Map<String, Joint3DPoint> joints,
+  ) {
+    const indices = {
+      'head': 0,
+      'leftShoulder': 11,
+      'rightShoulder': 12,
+      'leftElbow': 13,
+      'rightElbow': 14,
+      'leftWrist': 15,
+      'rightWrist': 16,
+      'leftHip': 23,
+      'rightHip': 24,
+      'leftKnee': 25,
+      'rightKnee': 26,
+      'leftAnkle': 27,
+      'rightAnkle': 28,
+    };
+    return indices.entries
+        .where((entry) => joints.containsKey(entry.key))
+        .map((entry) {
+          final joint = joints[entry.key]!;
+          return {
+            'index': entry.value,
+            'x': joint.x,
+            'y': joint.y,
+            'z': joint.z,
+            'visibility': joint.confidence,
+            'presence': joint.presence,
+          };
+        })
+        .toList(growable: false);
   }
 
   Future<Map<String, dynamic>> _get(String path) async {
@@ -180,6 +343,23 @@ class MotionMindApiService {
             headers: _headers,
             body: jsonEncode(body),
           )
+          .timeout(timeout);
+      return _decodeResponse(response);
+    } on TimeoutException {
+      throw MotionMindApiException('The MotionMind backend timed out.');
+    } on http.ClientException catch (error) {
+      throw MotionMindApiException(
+        'Cannot reach the MotionMind backend: $error',
+      );
+    } on FormatException catch (error) {
+      throw MotionMindApiException('The backend returned invalid JSON: $error');
+    }
+  }
+
+  Future<Map<String, dynamic>> _delete(String path) async {
+    try {
+      final response = await _client
+          .delete(Uri.parse('$baseUrl$path'), headers: _headers)
           .timeout(timeout);
       return _decodeResponse(response);
     } on TimeoutException {
@@ -228,73 +408,123 @@ class MotionMindApiException implements Exception {
 
 class ApiVisionResult {
   const ApiVisionResult({
+    required this.status,
     required this.isMoving,
     required this.detectedJointsCount,
     required this.trackingQualityIndex,
+    this.reason,
   });
 
   factory ApiVisionResult.fromJson(Map<String, dynamic> json) {
     return ApiVisionResult(
-      isMoving: json['is_moving'] as bool? ?? false,
+      status: json['status']?.toString() ?? 'INSUFFICIENT_DATA',
+      isMoving: json['is_moving'] as bool?,
       detectedJointsCount:
-          (json['detected_joints_count'] as num?)?.toInt() ?? 0,
-      trackingQualityIndex:
-          (json['tracking_quality_index'] as num?)?.toDouble() ?? 0.0,
+          (json['detected_landmarks_count'] as num?)?.toInt() ??
+          (json['detected_joints_count'] as num?)?.toInt() ??
+          0,
+      trackingQualityIndex: (json['tracking_quality_index'] as num?)
+          ?.toDouble(),
+      reason: json['reason']?.toString(),
     );
   }
 
-  final bool isMoving;
+  final String status;
+  final bool? isMoving;
   final int detectedJointsCount;
-  final double trackingQualityIndex;
+  final double? trackingQualityIndex;
+  final String? reason;
 }
 
 class ApiBiomechanicsResult {
   const ApiBiomechanicsResult({
-    required this.elbowAngle,
-    required this.backAngle,
-    required this.balanceIndex,
-    required this.centerOfGravity,
-    required this.velocity,
-    required this.acceleration,
-    required this.efficiency,
+    required this.status,
+    required this.dataQualityStatus,
+    required this.skillId,
+    required this.coordinateSpace,
+    required this.subjectView,
+    required this.measurementConfidence,
+    required this.availableMeasurements,
+    required this.unavailableMeasurements,
+    required this.reason,
+    required this.leftElbowAngle,
+    required this.rightElbowAngle,
+    required this.leftKneeAngle,
+    required this.rightKneeAngle,
+    required this.leftHipAngle,
+    required this.rightHipAngle,
+    required this.torsoInclination,
+    required this.bilateralKneeSymmetry,
     this.onDeviceQualityScore,
   });
 
   factory ApiBiomechanicsResult.fromJson(Map<String, dynamic> json) {
-    final rawCog = json['center_of_gravity'];
-    final cog = rawCog is List && rawCog.length >= 2
-        ? <double>[(rawCog[0] as num).toDouble(), (rawCog[1] as num).toDouble()]
-        : const <double>[0.5, 0.5];
     return ApiBiomechanicsResult(
-      elbowAngle: (json['elbow_angle'] as num?)?.toDouble() ?? 0.0,
-      backAngle: (json['back_angle'] as num?)?.toDouble() ?? 0.0,
-      balanceIndex: (json['balance_index'] as num?)?.toDouble() ?? 0.0,
-      centerOfGravity: cog,
-      velocity: (json['velocity'] as num?)?.toDouble() ?? 0.0,
-      acceleration: (json['acceleration'] as num?)?.toDouble() ?? 0.0,
-      efficiency: (json['efficiency'] as num?)?.toDouble() ?? 0.0,
+      status: json['status']?.toString() ?? 'INSUFFICIENT_DATA',
+      dataQualityStatus:
+          json['data_quality_status']?.toString() ?? 'INSUFFICIENT_DATA',
+      skillId: json['skill_id']?.toString() ?? 'unknown',
+      coordinateSpace:
+          json['coordinate_space']?.toString() ?? 'normalized_image',
+      subjectView: json['subject_view']?.toString() ?? 'unknown',
+      measurementConfidence: (json['measurement_confidence'] as num?)
+          ?.toDouble(),
+      availableMeasurements: _stringList(json['available_measurements']),
+      unavailableMeasurements: _stringList(json['unavailable_measurements']),
+      reason: json['reason']?.toString(),
+      leftElbowAngle: (json['left_elbow_angle'] as num?)?.toDouble(),
+      rightElbowAngle: (json['right_elbow_angle'] as num?)?.toDouble(),
+      leftKneeAngle: (json['left_knee_angle'] as num?)?.toDouble(),
+      rightKneeAngle: (json['right_knee_angle'] as num?)?.toDouble(),
+      leftHipAngle: (json['left_hip_angle'] as num?)?.toDouble(),
+      rightHipAngle: (json['right_hip_angle'] as num?)?.toDouble(),
+      torsoInclination: (json['torso_inclination'] as num?)?.toDouble(),
+      bilateralKneeSymmetry: (json['bilateral_knee_symmetry'] as num?)
+          ?.toDouble(),
       onDeviceQualityScore: (json['on_device_quality_score'] as num?)
           ?.toDouble(),
     );
   }
 
-  final double elbowAngle;
-  final double backAngle;
-  final double balanceIndex;
-  final List<double> centerOfGravity;
-  final double velocity;
-  final double acceleration;
-  final double efficiency;
+  final String status;
+  final String dataQualityStatus;
+  final String skillId;
+  final String coordinateSpace;
+  final String subjectView;
+  final double? measurementConfidence;
+  final List<String> availableMeasurements;
+  final List<String> unavailableMeasurements;
+  final String? reason;
+  final double? leftElbowAngle;
+  final double? rightElbowAngle;
+  final double? leftKneeAngle;
+  final double? rightKneeAngle;
+  final double? leftHipAngle;
+  final double? rightHipAngle;
+  final double? torsoInclination;
+  final double? bilateralKneeSymmetry;
   final double? onDeviceQualityScore;
 
   Map<String, dynamic> toJson() => {
-    'elbow_angle': elbowAngle,
-    'back_angle': backAngle,
-    'balance_index': balanceIndex,
-    'center_of_gravity': centerOfGravity,
-    'velocity': velocity,
-    'acceleration': acceleration,
-    'efficiency': efficiency,
+    'status': status,
+    'data_quality_status': dataQualityStatus,
+    'skill_id': skillId,
+    'coordinate_space': coordinateSpace,
+    'subject_view': subjectView,
+    if (measurementConfidence != null)
+      'measurement_confidence': measurementConfidence,
+    'available_measurements': availableMeasurements,
+    'unavailable_measurements': unavailableMeasurements,
+    if (reason != null) 'reason': reason,
+    if (leftElbowAngle != null) 'left_elbow_angle': leftElbowAngle,
+    if (rightElbowAngle != null) 'right_elbow_angle': rightElbowAngle,
+    if (leftKneeAngle != null) 'left_knee_angle': leftKneeAngle,
+    if (rightKneeAngle != null) 'right_knee_angle': rightKneeAngle,
+    if (leftHipAngle != null) 'left_hip_angle': leftHipAngle,
+    if (rightHipAngle != null) 'right_hip_angle': rightHipAngle,
+    if (torsoInclination != null) 'torso_inclination': torsoInclination,
+    if (bilateralKneeSymmetry != null)
+      'bilateral_knee_symmetry': bilateralKneeSymmetry,
     if (onDeviceQualityScore != null)
       'on_device_quality_score': onDeviceQualityScore,
   };
@@ -302,22 +532,107 @@ class ApiBiomechanicsResult {
 
 class ApiPerformanceResult {
   const ApiPerformanceResult({
-    required this.score,
+    required this.status,
+    required this.qualityScore,
+    required this.xp,
     required this.isCorrect,
     required this.detectedMistakes,
+    required this.verifiedFindings,
+    required this.feedbackEligible,
+    required this.reason,
+    this.scoringMethod,
+    this.category,
   });
 
   factory ApiPerformanceResult.fromJson(Map<String, dynamic> json) {
     return ApiPerformanceResult(
-      score: (json['score'] as num?)?.toInt() ?? 0,
-      isCorrect: json['is_correct'] as bool? ?? false,
+      status: json['status']?.toString() ?? 'INSUFFICIENT_DATA',
+      qualityScore: (json['quality_score'] as num?)?.toDouble(),
+      xp: (json['xp'] as num?)?.toInt(),
+      isCorrect: json['is_correct'] as bool?,
       detectedMistakes: _stringList(json['detected_mistakes']),
+      verifiedFindings: _stringList(json['verified_findings']),
+      feedbackEligible: json['feedback_eligible'] as bool? ?? false,
+      reason: json['reason']?.toString(),
+      scoringMethod: json['scoring_method']?.toString(),
+      category: json['category']?.toString(),
     );
   }
 
-  final int score;
-  final bool isCorrect;
+  final String status;
+  final double? qualityScore;
+  final int? xp;
+  final bool? isCorrect;
   final List<String> detectedMistakes;
+  final List<String> verifiedFindings;
+  final bool feedbackEligible;
+  final String? reason;
+  final String? scoringMethod;
+  final String? category;
+}
+
+class ApiTemporalResult {
+  const ApiTemporalResult({
+    required this.status,
+    required this.phase,
+    this.phaseLabel,
+    required this.repetitionCount,
+    required this.completedRep,
+    required this.smoothedKneeAngle,
+    required this.movementDirection,
+    required this.movementSpeedDegreesPerSecond,
+    required this.torsoInclination,
+    required this.leftHipAngle,
+    required this.rightHipAngle,
+    required this.bilateralKneeSymmetry,
+    required this.feedbackEligible,
+    required this.feedback,
+    required this.verifiedFindings,
+    required this.reason,
+    required this.landmarksRetained,
+  });
+
+  factory ApiTemporalResult.fromJson(Map<String, dynamic> json) {
+    return ApiTemporalResult(
+      status: json['status']?.toString() ?? 'INSUFFICIENT_DATA',
+      phase: json['phase']?.toString() ?? 'STANDING',
+      phaseLabel: json['phase_label']?.toString(),
+      repetitionCount: (json['repetition_count'] as num?)?.toInt() ?? 0,
+      completedRep: json['completed_rep'] as bool? ?? false,
+      smoothedKneeAngle: (json['smoothed_knee_angle'] as num?)?.toDouble(),
+      movementDirection: json['movement_direction']?.toString(),
+      movementSpeedDegreesPerSecond:
+          (json['movement_speed_degrees_per_second'] as num?)?.toDouble(),
+      torsoInclination: (json['torso_inclination'] as num?)?.toDouble(),
+      leftHipAngle: (json['left_hip_angle'] as num?)?.toDouble(),
+      rightHipAngle: (json['right_hip_angle'] as num?)?.toDouble(),
+      bilateralKneeSymmetry: (json['bilateral_knee_symmetry'] as num?)
+          ?.toDouble(),
+      feedbackEligible: json['feedback_eligible'] as bool? ?? false,
+      feedback: _stringList(json['feedback']),
+      verifiedFindings: _stringList(json['verified_findings']),
+      reason: json['reason']?.toString(),
+      landmarksRetained: (json['landmarks_retained'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  final String status;
+  final String phase;
+  final String? phaseLabel;
+  final int repetitionCount;
+  final bool completedRep;
+  final double? smoothedKneeAngle;
+  final String? movementDirection;
+  final double? movementSpeedDegreesPerSecond;
+  final double? torsoInclination;
+  final double? leftHipAngle;
+  final double? rightHipAngle;
+  final double? bilateralKneeSymmetry;
+  final bool feedbackEligible;
+  final List<String> feedback;
+  final List<String> verifiedFindings;
+  final String? reason;
+  final int landmarksRetained;
 }
 
 class ApiCoachResponse {
@@ -415,25 +730,59 @@ class ApiSessionRecord {
     required this.sessionId,
     required this.userId,
     required this.durationSeconds,
-    required this.calories,
+    this.calories,
     required this.finalScore,
     required this.mistakesLog,
+    this.repetitions,
+    this.exerciseId,
+    this.category,
+    this.trackingQuality,
+    this.validFrames,
+    this.rejectedFrames,
+    this.processingLatencyMs,
+    this.confidenceReasons = const [],
+    this.verifiedFindings = const [],
+    this.cameraFacing,
+    this.subjectView,
   });
 
   final String sessionId;
   final String userId;
   final int durationSeconds;
-  final double calories;
-  final int finalScore;
+  final double? calories;
+  final int? finalScore;
   final List<String> mistakesLog;
+  final int? repetitions;
+  final String? exerciseId;
+  final String? category;
+  final double? trackingQuality;
+  final int? validFrames;
+  final int? rejectedFrames;
+  final double? processingLatencyMs;
+  final List<String> confidenceReasons;
+  final List<String> verifiedFindings;
+  final String? cameraFacing;
+  final String? subjectView;
 
   Map<String, dynamic> toJson() => {
     'session_id': sessionId,
     'user_id': userId,
     'duration_seconds': durationSeconds,
-    'calories': calories,
-    'final_score': finalScore,
+    if (calories != null) 'calories': calories,
+    if (finalScore != null) 'final_score': finalScore,
+    if (repetitions != null) 'repetitions': repetitions,
     'mistakes_log': mistakesLog,
+    if (exerciseId != null) 'exercise_id': exerciseId,
+    if (category != null) 'category': category,
+    if (trackingQuality != null) 'tracking_quality': trackingQuality,
+    if (validFrames != null) 'valid_frames': validFrames,
+    if (rejectedFrames != null) 'rejected_frames': rejectedFrames,
+    if (processingLatencyMs != null)
+      'processing_latency_ms': processingLatencyMs,
+    if (confidenceReasons.isNotEmpty) 'confidence_reasons': confidenceReasons,
+    if (verifiedFindings.isNotEmpty) 'verified_findings': verifiedFindings,
+    if (cameraFacing != null) 'camera_facing': cameraFacing,
+    if (subjectView != null) 'subject_view': subjectView,
   };
 }
 

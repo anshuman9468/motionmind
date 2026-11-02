@@ -16,7 +16,8 @@ class DigitalTwinRadarChart extends StatefulWidget {
   State<DigitalTwinRadarChart> createState() => _DigitalTwinRadarChartState();
 }
 
-class _DigitalTwinRadarChartState extends State<DigitalTwinRadarChart> with SingleTickerProviderStateMixin {
+class _DigitalTwinRadarChartState extends State<DigitalTwinRadarChart>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 
@@ -68,7 +69,9 @@ class RadarChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = math.min(size.width, size.height) / 3.0; // Shrink radius slightly to leave space for labels
+    final radius =
+        math.min(size.width, size.height) /
+        3.0; // Shrink radius slightly to leave space for labels
     final keys = metrics.keys.toList();
     final count = keys.length;
 
@@ -78,16 +81,19 @@ class RadarChartPainter extends CustomPainter {
       ..strokeWidth = 1.0;
 
     final fillPaint = Paint()
-      ..color = AppColors.primaryBlue.withValues(alpha: 0.15) // Golden translucency
+      ..color = AppColors.primaryBlue
+          .withValues(alpha: 0.15) // Golden translucency
       ..style = PaintingStyle.fill;
 
     final linePaint = Paint()
-      ..color = AppColors.primaryBlue // Olympian Gold line
+      ..color = AppColors
+          .primaryBlue // Olympian Gold line
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5;
 
     final pointPaint = Paint()
-      ..color = AppColors.cyanGlow // Pure Pentelic Marble dot
+      ..color = AppColors
+          .cyanGlow // Pure Pentelic Marble dot
       ..style = PaintingStyle.fill;
 
     // Draw grid webs (levels 0.2, 0.4, 0.6, 0.8, 1.0)
@@ -143,7 +149,13 @@ class RadarChartPainter extends CustomPainter {
     for (final p in points) {
       canvas.drawCircle(p, 4.5, pointPaint);
       // Subtle glow behind the point
-      canvas.drawCircle(p, 8.0, Paint()..color = AppColors.cyanGlow.withValues(alpha: 0.15)..style = PaintingStyle.fill);
+      canvas.drawCircle(
+        p,
+        8.0,
+        Paint()
+          ..color = AppColors.cyanGlow.withValues(alpha: 0.15)
+          ..style = PaintingStyle.fill,
+      );
     }
 
     // Draw text labels

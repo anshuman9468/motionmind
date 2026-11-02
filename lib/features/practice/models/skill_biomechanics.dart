@@ -3,20 +3,39 @@ class Joint3DPoint {
   final double y;
   final double z;
   final double confidence;
+  final double? presence;
 
   const Joint3DPoint({
     required this.x,
     required this.y,
     required this.z,
     this.confidence = 1.0,
+    this.presence,
   });
 
   factory Joint3DPoint.fromJson(Map<String, dynamic> json) {
+    final x = json['x'];
+    final y = json['y'];
+    final z = json['z'];
+    if (x is! num || y is! num || z is! num) {
+      throw const FormatException(
+        'A joint requires finite x, y, and z coordinates.',
+      );
+    }
+    final xValue = x.toDouble();
+    final yValue = y.toDouble();
+    final zValue = z.toDouble();
+    if (!xValue.isFinite || !yValue.isFinite || !zValue.isFinite) {
+      throw const FormatException(
+        'A joint requires finite x, y, and z coordinates.',
+      );
+    }
     return Joint3DPoint(
-      x: (json['x'] as num?)?.toDouble() ?? 0.0,
-      y: (json['y'] as num?)?.toDouble() ?? 0.0,
-      z: (json['z'] as num?)?.toDouble() ?? 0.0,
-      confidence: (json['confidence'] as num?)?.toDouble() ?? 1.0,
+      x: xValue,
+      y: yValue,
+      z: zValue,
+      confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
+      presence: (json['presence'] as num?)?.toDouble(),
     );
   }
 }
@@ -26,6 +45,7 @@ class Joint3DPoint {
 /// without sending camera pixels to the backend.
 class MediaPipePoseLandmark {
   const MediaPipePoseLandmark({
+    required this.index,
     required this.x,
     required this.y,
     required this.z,
@@ -34,20 +54,38 @@ class MediaPipePoseLandmark {
   });
 
   factory MediaPipePoseLandmark.fromJson(Map<String, dynamic> json) {
+    final x = json['x'];
+    final y = json['y'];
+    final z = json['z'];
+    if (x is! num || y is! num || z is! num) {
+      throw const FormatException(
+        'A pose landmark requires finite x, y, and z coordinates.',
+      );
+    }
+    final xValue = x.toDouble();
+    final yValue = y.toDouble();
+    final zValue = z.toDouble();
+    if (!xValue.isFinite || !yValue.isFinite || !zValue.isFinite) {
+      throw const FormatException(
+        'A pose landmark requires finite x, y, and z coordinates.',
+      );
+    }
     return MediaPipePoseLandmark(
-      x: (json['x'] as num?)?.toDouble() ?? 0.0,
-      y: (json['y'] as num?)?.toDouble() ?? 0.0,
-      z: (json['z'] as num?)?.toDouble() ?? 0.0,
-      visibility: (json['visibility'] as num?)?.toDouble() ?? 0.0,
-      presence: (json['presence'] as num?)?.toDouble() ?? 0.0,
+      index: (json['index'] as num?)?.toInt(),
+      x: xValue,
+      y: yValue,
+      z: zValue,
+      visibility: (json['visibility'] as num?)?.toDouble(),
+      presence: (json['presence'] as num?)?.toDouble(),
     );
   }
 
+  final int? index;
   final double x;
   final double y;
   final double z;
-  final double visibility;
-  final double presence;
+  final double? visibility;
+  final double? presence;
 }
 
 enum HumanDetectionState {
@@ -58,6 +96,8 @@ enum HumanDetectionState {
 }
 
 class HumanTrackingPayload {
+  static const currentSchemaVersion = '1.0';
+
   final bool humanDetected;
   final HumanDetectionState trackingState;
   final double trackingConfidence;
@@ -69,6 +109,15 @@ class HumanTrackingPayload {
   final int frameHeight;
   final int timestampUs;
   final double? onDeviceQualityScore;
+  final String schemaVersion;
+  final String coordinateSpace;
+  final String cameraFacing;
+  final String subjectView;
+  final bool? mirrored;
+  final int? rotationDegrees;
+  final String? sessionId;
+  final String? skillId;
+  final String? skillName;
 
   const HumanTrackingPayload({
     required this.humanDetected,
@@ -82,6 +131,15 @@ class HumanTrackingPayload {
     this.frameHeight = 0,
     this.timestampUs = 0,
     this.onDeviceQualityScore,
+    this.schemaVersion = currentSchemaVersion,
+    this.coordinateSpace = 'normalized_image',
+    this.cameraFacing = 'unknown',
+    this.subjectView = 'unknown',
+    this.mirrored,
+    this.rotationDegrees,
+    this.sessionId,
+    this.skillId,
+    this.skillName,
   });
 
   factory HumanTrackingPayload.empty() {
@@ -117,23 +175,35 @@ class HumanTrackingPayload {
     final rawJoints = rawJointsValue is Map
         ? Map<String, dynamic>.from(rawJointsValue)
         : <String, dynamic>{};
-    final jointsMap = rawJoints.map(
-      (k, v) => MapEntry(
-        k,
-        Joint3DPoint.fromJson(Map<String, dynamic>.from(v as Map)),
-      ),
-    );
+    final jointsMap = <String, Joint3DPoint>{};
+    rawJoints.forEach((key, value) {
+      if (value is Map) {
+        try {
+          jointsMap[key] = Joint3DPoint.fromJson(
+            Map<String, dynamic>.from(value),
+          );
+        } on FormatException {
+          // Omit malformed joints so the confidence gate abstains instead of
+          // turning a missing coordinate into a synthetic zero.
+        }
+      }
+    });
     final rawLandmarks = json['landmarks'];
-    final landmarks = rawLandmarks is List
-        ? rawLandmarks
-              .whereType<Map>()
-              .map(
-                (landmark) => MediaPipePoseLandmark.fromJson(
-                  Map<String, dynamic>.from(landmark),
-                ),
-              )
-              .toList(growable: false)
-        : const <MediaPipePoseLandmark>[];
+    final landmarks = <MediaPipePoseLandmark>[];
+    if (rawLandmarks is List) {
+      for (final rawLandmark in rawLandmarks.whereType<Map>()) {
+        try {
+          landmarks.add(
+            MediaPipePoseLandmark.fromJson(
+              Map<String, dynamic>.from(rawLandmark),
+            ),
+          );
+        } on FormatException {
+          // Keep only complete native landmarks; missing coordinates remain
+          // unavailable to temporal analysis.
+        }
+      }
+    }
 
     return HumanTrackingPayload(
       humanDetected: (json['humanDetected'] as bool?) ?? false,
@@ -149,6 +219,16 @@ class HumanTrackingPayload {
       frameHeight: (json['frameHeight'] as num?)?.toInt() ?? 0,
       timestampUs: (json['timestampUs'] as num?)?.toInt() ?? 0,
       onDeviceQualityScore: (json['onDeviceQualityScore'] as num?)?.toDouble(),
+      schemaVersion: (json['schemaVersion'] as String?) ?? currentSchemaVersion,
+      coordinateSpace:
+          (json['coordinateSpace'] as String?) ?? 'normalized_image',
+      cameraFacing: (json['cameraFacing'] as String?) ?? 'unknown',
+      subjectView: (json['subjectView'] as String?) ?? 'unknown',
+      mirrored: json['mirrored'] as bool?,
+      rotationDegrees: (json['rotationDegrees'] as num?)?.toInt(),
+      sessionId: json['sessionId'] as String?,
+      skillId: json['skillId'] as String?,
+      skillName: json['skillName'] as String?,
     );
   }
 }
@@ -197,6 +277,26 @@ class SkillBiomechanicsProfile {
   /// Repository of skill-specific biomechanical profiles
   static List<SkillBiomechanicsProfile> getAllProfiles() {
     return const [
+      SkillBiomechanicsProfile(
+        skillId: 'sk_boxing',
+        skillTitle: 'Boxing Guard & Punch Mechanics',
+        phases: [
+          SkillMovementPhase(
+            name: 'GUARD',
+            description: 'Guard position and controlled punch extension',
+            targets: {
+              'elbow': JointAngleTarget(
+                jointName: 'Elbow Extension',
+                targetAngle: 145,
+                minAcceptableAngle: 110,
+                maxAcceptableAngle: 180,
+                increasePrompt: 'EXTEND THE PUNCH',
+                decreasePrompt: 'KEEP A SOFT ELBOW',
+              ),
+            },
+          ),
+        ],
+      ),
       SkillBiomechanicsProfile(
         skillId: 'sk_1',
         skillTitle: 'Zeus Bolt: Basketball Jump Shot',
@@ -375,16 +475,18 @@ class SkillBiomechanicsProfile {
               'knee': JointAngleTarget(
                 jointName: 'Knee Depth',
                 targetAngle: 90,
-                minAcceptableAngle: 80,
-                maxAcceptableAngle: 100,
+                minAcceptableAngle: 70,
+                maxAcceptableAngle: 130,
                 increasePrompt: 'REACH PARALLEL DEPTH',
                 decreasePrompt: 'DONT OVER-SINK',
               ),
               'torso': JointAngleTarget(
                 jointName: 'Chest Position',
-                targetAngle: 155,
-                minAcceptableAngle: 145,
-                maxAcceptableAngle: 168,
+                // The engine reports torso inclination from the upright
+                // reference axis, so upright is 0°, not a 180° supplement.
+                targetAngle: 0,
+                minAcceptableAngle: 0,
+                maxAcceptableAngle: 45,
                 increasePrompt: 'STAY UPRIGHT',
                 decreasePrompt: 'DONT BEND FORWARD',
               ),
@@ -405,23 +507,27 @@ class SkillBiomechanicsProfile {
     if (lowerTitle.contains('sitting') ||
         lowerTitle.contains('desk') ||
         lowerTitle.contains('posture')) {
-      return profiles[1];
+      return profiles.firstWhere((profile) => profile.skillId == 'sk_sitting');
+    } else if (lowerTitle.contains('box') ||
+        lowerTitle.contains('punch') ||
+        lowerTitle.contains('guard')) {
+      return profiles.firstWhere((profile) => profile.skillId == 'sk_boxing');
     } else if (lowerTitle.contains('run') ||
         lowerTitle.contains('sprint') ||
         lowerTitle.contains('cadence')) {
-      return profiles[2];
+      return profiles.firstWhere((profile) => profile.skillId == 'sk_running');
     } else if (lowerTitle.contains('jump') ||
         lowerTitle.contains('vertical') ||
         lowerTitle.contains('leap')) {
-      return profiles[3];
+      return profiles.firstWhere((profile) => profile.skillId == 'sk_jumping');
     } else if (lowerTitle.contains('squat') ||
         lowerTitle.contains('powerlifting')) {
-      return profiles[4];
+      return profiles.firstWhere((profile) => profile.skillId == 'sk_3');
     }
 
     return profiles.firstWhere(
       (p) => p.skillId == skillId,
-      orElse: () => profiles.first,
+      orElse: () => profiles.firstWhere((profile) => profile.skillId == 'sk_1'),
     );
   }
 }

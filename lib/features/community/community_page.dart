@@ -29,7 +29,10 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
             borderRadius: BorderRadius.circular(24),
             side: const BorderSide(color: AppColors.glassBorder),
           ),
-          title: const Text('Create Community Post', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          title: const Text(
+            'Create Community Post',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -51,14 +54,20 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: AppColors.textMuted),
+              ),
             ),
             GradientButton(
               text: 'Publish Post',
               onPressed: () {
                 if (titleController.text.isNotEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Post published to SkillVerse Community!'), backgroundColor: AppColors.emeraldGreen),
+                    const SnackBar(
+                      content: Text('Post published to SkillVerse Community!'),
+                      backgroundColor: AppColors.emeraldGreen,
+                    ),
                   );
                   Navigator.pop(context);
                 }
@@ -80,7 +89,10 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
         onPressed: _showCreatePostDialog,
         backgroundColor: AppColors.primaryBlue,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('New Post', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        label: const Text(
+          'New Post',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
       body: SafeArea(
         child: Padding(
@@ -91,7 +103,11 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
               // Header
               const Text(
                 'SkillVerse Community',
-                style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 4),
               const Text(
@@ -118,19 +134,38 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
                               children: [
                                 CircleAvatar(
                                   radius: 20,
-                                  backgroundImage: NetworkImage(post.authorAvatar),
+                                  backgroundImage: NetworkImage(
+                                    post.authorAvatar,
+                                  ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(post.authorName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                                      Text(post.authorRole, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                                      Text(
+                                        post.authorName,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      Text(
+                                        post.authorRole,
+                                        style: const TextStyle(
+                                          color: AppColors.textMuted,
+                                          fontSize: 12,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
-                                SkillBadge(label: post.tag, color: AppColors.cyanGlow),
+                                SkillBadge(
+                                  label: post.tag,
+                                  color: AppColors.cyanGlow,
+                                ),
                               ],
                             ),
                             const SizedBox(height: 14),
@@ -138,12 +173,20 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
                             // Post Title & Content
                             Text(
                               post.title,
-                              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               post.content,
-                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.4),
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 14,
+                                height: 1.4,
+                              ),
                             ),
                             const SizedBox(height: 16),
 
@@ -152,26 +195,45 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
                               children: [
                                 InkWell(
                                   borderRadius: BorderRadius.circular(20),
-                                  onTap: () => ref.read(communityPostsProvider.notifier).toggleLike(post.id),
+                                  onTap: () => ref
+                                      .read(communityPostsProvider.notifier)
+                                      .toggleLike(post.id),
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: post.isLiked ? AppColors.primaryBlue.withValues(alpha: 0.2) : AppColors.surface,
+                                      color: post.isLiked
+                                          ? AppColors.primaryBlue.withValues(
+                                              alpha: 0.2,
+                                            )
+                                          : AppColors.surface,
                                       borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: post.isLiked ? AppColors.cyanGlow : AppColors.glassBorder),
+                                      border: Border.all(
+                                        color: post.isLiked
+                                            ? AppColors.cyanGlow
+                                            : AppColors.glassBorder,
+                                      ),
                                     ),
                                     child: Row(
                                       children: [
                                         Icon(
-                                          post.isLiked ? Icons.thumb_up_alt_rounded : Icons.thumb_up_off_alt_rounded,
-                                          color: post.isLiked ? AppColors.cyanGlow : AppColors.textMuted,
+                                          post.isLiked
+                                              ? Icons.thumb_up_alt_rounded
+                                              : Icons.thumb_up_off_alt_rounded,
+                                          color: post.isLiked
+                                              ? AppColors.cyanGlow
+                                              : AppColors.textMuted,
                                           size: 16,
                                         ),
                                         const SizedBox(width: 6),
                                         Text(
                                           '${post.upvotes}',
                                           style: TextStyle(
-                                            color: post.isLiked ? AppColors.cyanGlow : AppColors.textMuted,
+                                            color: post.isLiked
+                                                ? AppColors.cyanGlow
+                                                : AppColors.textMuted,
                                             fontWeight: FontWeight.bold,
                                             fontSize: 12,
                                           ),
@@ -183,13 +245,29 @@ class _CommunityPageState extends ConsumerState<CommunityPage> {
                                 const SizedBox(width: 12),
                                 Row(
                                   children: [
-                                    const Icon(Icons.mode_comment_outlined, color: AppColors.textMuted, size: 16),
+                                    const Icon(
+                                      Icons.mode_comment_outlined,
+                                      color: AppColors.textMuted,
+                                      size: 16,
+                                    ),
                                     const SizedBox(width: 4),
-                                    Text('${post.commentsCount} comments', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                                    Text(
+                                      '${post.commentsCount} comments',
+                                      style: const TextStyle(
+                                        color: AppColors.textMuted,
+                                        fontSize: 12,
+                                      ),
+                                    ),
                                   ],
                                 ),
                                 const Spacer(),
-                                Text(post.timeAgo, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                                Text(
+                                  post.timeAgo,
+                                  style: const TextStyle(
+                                    color: AppColors.textMuted,
+                                    fontSize: 11,
+                                  ),
+                                ),
                               ],
                             ),
                           ],

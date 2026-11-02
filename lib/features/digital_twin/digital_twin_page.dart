@@ -33,21 +33,40 @@ class DigitalTwinPage extends ConsumerWidget {
                     children: [
                       const Text(
                         'Cognitive Twin',
-                        style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.cyanGlow.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.cyanGlow.withValues(alpha: 0.4)),
+                          border: Border.all(
+                            color: AppColors.cyanGlow.withValues(alpha: 0.4),
+                          ),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            CircleAvatar(radius: 3, backgroundColor: AppColors.emeraldGreen),
+                            CircleAvatar(
+                              radius: 3,
+                              backgroundColor: AppColors.emeraldGreen,
+                            ),
                             SizedBox(width: 4),
-                            Text('Synced', style: TextStyle(color: AppColors.cyanGlow, fontSize: 10, fontWeight: FontWeight.bold)),
+                            Text(
+                              'Synced',
+                              style: TextStyle(
+                                color: AppColors.cyanGlow,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -73,9 +92,16 @@ class DigitalTwinPage extends ConsumerWidget {
                       children: [
                         Text(
                           '6-Axis Competency Matrix',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
-                        SkillBadge(label: 'Score: 94.8 / 100', color: AppColors.primaryPurple),
+                        SkillBadge(
+                          label: 'Score: 94.8 / 100',
+                          color: AppColors.primaryPurple,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -94,7 +120,10 @@ class DigitalTwinPage extends ConsumerWidget {
                       runSpacing: 12,
                       children: metrics.entries.map((e) {
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.surface,
                             borderRadius: BorderRadius.circular(12),
@@ -105,12 +134,19 @@ class DigitalTwinPage extends ConsumerWidget {
                             children: [
                               Text(
                                 e.key,
-                                style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                                style: const TextStyle(
+                                  color: AppColors.textMuted,
+                                  fontSize: 12,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 '${(e.value * 100).toInt()}%',
-                                style: const TextStyle(color: AppColors.cyanGlow, fontWeight: FontWeight.bold, fontSize: 13),
+                                style: const TextStyle(
+                                  color: AppColors.cyanGlow,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
                               ),
                             ],
                           ),
@@ -142,15 +178,25 @@ class DigitalTwinPage extends ConsumerWidget {
                       children: [
                         Text(
                           'Principal AI Systems Architect',
-                          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        SkillBadge(label: '98.4% Match', color: AppColors.emeraldGreen),
+                        SkillBadge(
+                          label: '98.4% Match',
+                          color: AppColors.emeraldGreen,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     const Text(
                       'Market demand: High • Estimated Compensation Range: \$380k - \$520k',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     GradientButton(
@@ -160,7 +206,9 @@ class DigitalTwinPage extends ConsumerWidget {
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Simulation complete! Skill twin updated by +0.8%.'),
+                            content: Text(
+                              'Simulation complete! Skill twin updated by +0.8%.',
+                            ),
                             backgroundColor: AppColors.emeraldGreen,
                           ),
                         );
@@ -245,13 +293,29 @@ class _TimelineTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(sub, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  Text(
+                    sub,
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
               ),
             ),
-            Text(date, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+            Text(
+              date,
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+            ),
           ],
         ),
       ),

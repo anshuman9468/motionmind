@@ -10,6 +10,8 @@ import '../../features/home/home_page.dart';
 import '../../features/marketplace/marketplace_page.dart';
 import '../../features/ai_coach/ai_coach_page.dart';
 import '../../features/practice/practice_page.dart';
+import '../../features/practice/exercise_selection_page.dart';
+import '../../features/practice/exercise_preparation_page.dart';
 import '../../features/digital_twin/digital_twin_page.dart';
 import '../../features/dashboard/dashboard_page.dart';
 import '../../features/community/community_page.dart';
@@ -24,10 +26,7 @@ final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/splash',
   routes: [
-    GoRoute(
-      path: '/splash',
-      builder: (context, state) => const SplashPage(),
-    ),
+    GoRoute(path: '/splash', builder: (context, state) => const SplashPage()),
     GoRoute(
       path: '/onboarding',
       builder: (context, state) => const OnboardingPage(),
@@ -36,10 +35,7 @@ final GoRouter appRouter = GoRouter(
       path: '/onboarding-details',
       builder: (context, state) => const OnboardingDetailsPage(),
     ),
-    GoRoute(
-      path: '/auth',
-      builder: (context, state) => const AuthPage(),
-    ),
+    GoRoute(path: '/auth', builder: (context, state) => const AuthPage()),
     GoRoute(
       path: '/achievements',
       builder: (context, state) => const AchievementsPage(),
@@ -55,10 +51,7 @@ final GoRouter appRouter = GoRouter(
       branches: [
         StatefulShellBranch(
           routes: [
-            GoRoute(
-              path: '/',
-              builder: (context, state) => const HomePage(),
-            ),
+            GoRoute(path: '/', builder: (context, state) => const HomePage()),
           ],
         ),
         StatefulShellBranch(
@@ -81,7 +74,19 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/practice',
-              builder: (context, state) => const PracticePage(),
+              builder: (context, state) => const ExerciseSelectionPage(),
+            ),
+            GoRoute(
+              path: '/practice/prepare/:exerciseId',
+              builder: (context, state) => ExercisePreparationPage(
+                exerciseId: state.pathParameters['exerciseId'] ?? 'squat',
+              ),
+            ),
+            GoRoute(
+              path: '/practice/session/:exerciseId',
+              builder: (context, state) => PracticePage(
+                exerciseId: state.pathParameters['exerciseId'] ?? 'squat',
+              ),
             ),
           ],
         ),

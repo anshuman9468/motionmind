@@ -19,19 +19,22 @@ class _OnboardingPageState extends State<OnboardingPage> {
   final List<_OnboardingSlide> _slides = const [
     _OnboardingSlide(
       title: 'AI-Powered Digital Twin',
-      subtitle: 'Simulate your cognitive learning trajectory with an evolving AI matrix tuned to your goals.',
+      subtitle:
+          'Simulate your cognitive learning trajectory with an evolving AI matrix tuned to your goals.',
       icon: Icons.psychology_rounded,
       accentColor: AppColors.cyanGlow,
     ),
     _OnboardingSlide(
       title: 'Live Practice Simulator',
-      subtitle: 'Engage in real-time AI architectural roleplays and scenario-based code reviews.',
+      subtitle:
+          'Engage in real-time AI architectural roleplays and scenario-based code reviews.',
       icon: Icons.sports_esports_rounded,
       accentColor: AppColors.primaryPurple,
     ),
     _OnboardingSlide(
       title: 'Unicorn-Grade Mastery',
-      subtitle: 'Compete in global leaderboards, earn verified credentials, and join top 1% builders.',
+      subtitle:
+          'Compete in global leaderboards, earn verified credentials, and join top 1% builders.',
       icon: Icons.workspace_premium_rounded,
       accentColor: AppColors.emeraldGreen,
     ),
@@ -58,18 +61,29 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           gradient: AppColors.primaryGradient,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 16),
+                        child: const Icon(
+                          Icons.auto_awesome_rounded,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       const Text(
                         'SkillVerse AI',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                     ],
                   ),
                   TextButton(
                     onPressed: () => context.go('/auth'),
-                    child: const Text('Skip', style: TextStyle(color: AppColors.textMuted)),
+                    child: const Text(
+                      'Skip',
+                      style: TextStyle(color: AppColors.textMuted),
+                    ),
                   ),
                 ],
               ),
@@ -101,11 +115,25 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                   padding: const EdgeInsets.all(24),
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: slide.accentColor.withValues(alpha: 0.15),
-                                    border: Border.all(color: slide.accentColor.withValues(alpha: 0.4), width: 1.5),
+                                    color: slide.accentColor.withValues(
+                                      alpha: 0.15,
+                                    ),
+                                    border: Border.all(
+                                      color: slide.accentColor.withValues(
+                                        alpha: 0.4,
+                                      ),
+                                      width: 1.5,
+                                    ),
                                   ),
-                                  child: Icon(slide.icon, size: 54, color: slide.accentColor),
-                                ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
+                                  child: Icon(
+                                    slide.icon,
+                                    size: 54,
+                                    color: slide.accentColor,
+                                  ),
+                                ).animate().scale(
+                                  duration: 600.ms,
+                                  curve: Curves.easeOutBack,
+                                ),
                               ],
                             ),
                           ),
@@ -114,15 +142,18 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
                         // Title & Subtitle
                         Text(
-                          slide.title,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: -0.5,
-                          ),
-                        ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2, end: 0),
+                              slide.title,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: -0.5,
+                              ),
+                            )
+                            .animate()
+                            .fadeIn(duration: 400.ms)
+                            .slideY(begin: 0.2, end: 0),
                         const SizedBox(height: 12),
                         Text(
                           slide.subtitle,
@@ -156,7 +187,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
                         height: 8,
                         width: isSelected ? 24 : 8,
                         decoration: BoxDecoration(
-                          color: isSelected ? AppColors.cyanGlow : AppColors.surfaceLight,
+                          color: isSelected
+                              ? AppColors.cyanGlow
+                              : AppColors.surfaceLight,
                           borderRadius: BorderRadius.circular(10),
                         ),
                       );
@@ -167,8 +200,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   // Next / Get Started Button
                   GradientButton(
                     width: double.infinity,
-                    text: _currentPage == _slides.length - 1 ? 'Get Started Now' : 'Continue',
-                    icon: _currentPage == _slides.length - 1 ? Icons.rocket_launch_rounded : Icons.arrow_forward_rounded,
+                    text: _currentPage == _slides.length - 1
+                        ? 'Get Started Now'
+                        : 'Continue',
+                    icon: _currentPage == _slides.length - 1
+                        ? Icons.rocket_launch_rounded
+                        : Icons.arrow_forward_rounded,
                     onPressed: () {
                       if (_currentPage < _slides.length - 1) {
                         _pageController.nextPage(

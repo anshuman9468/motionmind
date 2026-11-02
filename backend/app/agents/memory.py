@@ -36,7 +36,7 @@ async def get_history(user_id: str):
     sessions = _sessions_store.get(user_id, [])
     
     # Calculate aggregate analytics
-    cumulative_score = sum(s.final_score for s in sessions)
+    cumulative_score = int(sum(s.final_score for s in sessions if s.final_score is not None))
     
     # Track mistakes frequency
     mistake_counts = {}

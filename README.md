@@ -20,7 +20,7 @@ and a FastAPI biomechanics backend.
 
 <p>
   <img src="https://img.shields.io/badge/status-active-2ea44f?style=flat-square" alt="Project status: active">
-  <img src="https://img.shields.io/badge/Flutter-3.44.1-02569B?style=flat-square&logo=flutter&logoColor=white" alt="Flutter 3.44.1">
+  <img src="https://img.shields.io/badge/Flutter-3.47%2B-02569B?style=flat-square&logo=flutter&logoColor=white" alt="Flutter 3.47 or newer">
   <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.10 or newer">
   <img src="https://img.shields.io/badge/FastAPI-0.110%2B-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI 0.110 or newer">
   <img src="https://img.shields.io/badge/MediaPipe-Pose-FF6F00?style=flat-square" alt="MediaPipe Pose">
@@ -45,8 +45,9 @@ device.
 | Experience | What it does |
 | --- | --- |
 | **Live practice** | Camera-based pose tracking with front/rear camera switching. |
-| **Movement quality** | MediaPipe landmarks plus a lightweight TFLite quality model. |
-| **Biomechanics** | Converts pose data into interpretable movement metrics. |
+| **Exercise-first flow** | Sports/Gym selection, preparation guidance, and stable canonical exercise IDs. |
+| **Movement quality** | MediaPipe landmarks plus a separate, optional TFLite signal. |
+| **Biomechanics** | Confidence-gated geometric measurements; invalid frames abstain. |
 | **AI coaching** | Generates feedback, corrections, and encouragement. |
 | **Skill progression** | Roadmaps, recommendations, performance scores, and session memory. |
 | **Digital twin** | Maintains a user profile built from recent practice telemetry. |
@@ -214,6 +215,10 @@ running.
 | `/agents/vision` | `POST` | Vision and pose analysis |
 | `/agents/biomechanics` | `POST` | Biomechanical metric extraction |
 | `/agents/performance` | `POST` | Score and performance evaluation |
+| `/agents/temporal/squat` | `POST` | Timestamped squat phases and repetition counting |
+| `/agents/temporal/squat/{user_id}/{session_id}` | `DELETE` | Reset temporal state for a session |
+| `/agents/temporal/analyze` | `POST` | Generic non-squat phase/cycle analysis from measured angles |
+| `/agents/temporal/analyze/{user_id}/{session_id}` | `DELETE` | Reset non-squat temporal state |
 | `/agents/coach` | `POST` | Coaching feedback |
 | `/agents/recommendation` | `POST` | Training recommendations |
 | `/agents/planner` | `POST` | Skill roadmap generation |
@@ -230,7 +235,34 @@ running.
 | [`motionmind_quality.tflite`](android/app/src/main/assets/motionmind_quality.tflite) | Lightweight movement-quality scorer |
 
 The Android native bridge handles camera frame conversion, pose inference, and
-the TFLite output tensor. Backend failures do not disable the local camera loop.
+the optional TFLite output tensor. The TFLite signal is kept separate from the
+deterministic backend quality score. Backend failures do not disable the local
+camera loop, but no technique score is shown until a valid frame is evaluated.
+
+The versioned Android → Flutter → FastAPI landmark contract is documented in
+[`docs/pose_contract.md`](docs/pose_contract.md). Phase 1/2 currently validates
+the squat rule path. The eight canonical exercise profiles expose separate,
+body-only heuristic geometry rules and temporal phase foundations; they do not
+infer balls, bats, impact, load, force, or injury risk. The current iOS bridge reports pose inference as
+unsupported rather than returning demo landmarks.
+
+### Phase 3 temporal squat tracking
+
+The Android camera stream now supplies monotonic timestamps and the Flutter
+practice screen feeds real, confidence-gated knee, hip, and torso measurements
+into a bounded temporal tracker. A three-sample median reduces landmark jitter,
+while direction and angular speed are derived from timestamp deltas. The tracker
+recognizes `STANDING → DESCENDING → BOTTOM → ASCENDING → COMPLETED REP`,
+counts only completed cycles, pauses on uncertain frames, and resets a partial
+cycle after extended tracking loss. Initial thresholds are configurable
+heuristics for a side-view squat and are not accuracy claims.
+
+The backend mirror is available at `POST /agents/temporal/squat` for squats and
+`POST /agents/temporal/analyze` for the other canonical profiles. Responses
+contain a phase label, repetition count/cycle status, confidence state, and
+feedback eligibility. All initial sport/gym thresholds are configurable
+heuristics and require labelled, user-independent evaluation before any
+accuracy claim.
 
 ## Verification
 

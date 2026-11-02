@@ -15,13 +15,20 @@ class AuthPage extends ConsumerStatefulWidget {
   ConsumerState<AuthPage> createState() => _AuthPageState();
 }
 
-class _AuthPageState extends ConsumerState<AuthPage> with SingleTickerProviderStateMixin {
+class _AuthPageState extends ConsumerState<AuthPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = false;
 
-  final TextEditingController _emailController = TextEditingController(text: 'alex.vance@skillverse.ai');
-  final TextEditingController _passwordController = TextEditingController(text: '••••••••••••');
-  final TextEditingController _nameController = TextEditingController(text: 'Alex Vance');
+  final TextEditingController _emailController = TextEditingController(
+    text: 'alex.vance@skillverse.ai',
+  );
+  final TextEditingController _passwordController = TextEditingController(
+    text: '••••••••••••',
+  );
+  final TextEditingController _nameController = TextEditingController(
+    text: 'Alex Vance',
+  );
 
   @override
   void initState() {
@@ -32,14 +39,20 @@ class _AuthPageState extends ConsumerState<AuthPage> with SingleTickerProviderSt
   Future<void> _handleEmailAuth() async {
     setState(() => _isLoading = true);
     final auth = ref.read(authServiceProvider);
-    
+
     try {
       if (_tabController.index == 0) {
         // Sign In
-        await auth.signInWithEmail(_emailController.text.trim(), _passwordController.text.trim());
+        await auth.signInWithEmail(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+        );
       } else {
         // Create Account
-        await auth.signUpWithEmail(_emailController.text.trim(), _passwordController.text.trim());
+        await auth.signUpWithEmail(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+        );
       }
       if (mounted) {
         context.go('/onboarding-details');
@@ -47,7 +60,10 @@ class _AuthPageState extends ConsumerState<AuthPage> with SingleTickerProviderSt
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Authentication failed: $e'), backgroundColor: AppColors.roseError),
+          SnackBar(
+            content: Text('Authentication failed: $e'),
+            backgroundColor: AppColors.roseError,
+          ),
         );
       }
     } finally {
@@ -58,7 +74,7 @@ class _AuthPageState extends ConsumerState<AuthPage> with SingleTickerProviderSt
   Future<void> _handleSocialAuth(String provider) async {
     setState(() => _isLoading = true);
     final auth = ref.read(authServiceProvider);
-    
+
     try {
       if (provider == 'google') {
         await auth.signInWithGoogle();
@@ -73,7 +89,10 @@ class _AuthPageState extends ConsumerState<AuthPage> with SingleTickerProviderSt
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$provider sign in failed: $e'), backgroundColor: AppColors.roseError),
+          SnackBar(
+            content: Text('$provider sign in failed: $e'),
+            backgroundColor: AppColors.roseError,
+          ),
         );
       }
     } finally {
@@ -107,8 +126,15 @@ class _AuthPageState extends ConsumerState<AuthPage> with SingleTickerProviderSt
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 36),
-                  ).animate().scale(duration: 500.ms, curve: Curves.easeOutBack),
+                    child: const Icon(
+                      Icons.auto_awesome_rounded,
+                      color: Colors.white,
+                      size: 36,
+                    ),
+                  ).animate().scale(
+                    duration: 500.ms,
+                    curve: Curves.easeOutBack,
+                  ),
                   const SizedBox(height: 16),
 
                   const Text(
@@ -145,7 +171,9 @@ class _AuthPageState extends ConsumerState<AuthPage> with SingleTickerProviderSt
                             ),
                             labelColor: Colors.white,
                             unselectedLabelColor: AppColors.textMuted,
-                            labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                            labelStyle: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
                             tabs: const [
                               Tab(text: 'Sign In'),
                               Tab(text: 'Create Account'),
@@ -187,7 +215,9 @@ class _AuthPageState extends ConsumerState<AuthPage> with SingleTickerProviderSt
                                 // Submit Button
                                 GradientButton(
                                   width: double.infinity,
-                                  text: isSignUp ? 'Create Free Account' : 'Sign In to SkillVerse',
+                                  text: isSignUp
+                                      ? 'Create Free Account'
+                                      : 'Sign In to SkillVerse',
                                   isLoading: _isLoading,
                                   onPressed: _handleEmailAuth,
                                 ),
@@ -198,7 +228,10 @@ class _AuthPageState extends ConsumerState<AuthPage> with SingleTickerProviderSt
                                   onPressed: () => _handleSocialAuth('guest'),
                                   child: const Text(
                                     'Continue as Guest',
-                                    style: TextStyle(color: AppColors.cyanGlow, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                      color: AppColors.cyanGlow,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -213,15 +246,23 @@ class _AuthPageState extends ConsumerState<AuthPage> with SingleTickerProviderSt
                   // Social Logins
                   Row(
                     children: [
-                      const Expanded(child: Divider(color: AppColors.glassBorder)),
+                      const Expanded(
+                        child: Divider(color: AppColors.glassBorder),
+                      ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Text(
                           'OR CONTINUE WITH',
-                          style: TextStyle(color: AppColors.textMuted.withValues(alpha: 0.8), fontSize: 11, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: AppColors.textMuted.withValues(alpha: 0.8),
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                      const Expanded(child: Divider(color: AppColors.glassBorder)),
+                      const Expanded(
+                        child: Divider(color: AppColors.glassBorder),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -254,10 +295,7 @@ class _SocialIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _SocialIconButton({
-    required this.icon,
-    required this.onTap,
-  });
+  const _SocialIconButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

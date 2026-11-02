@@ -25,10 +25,7 @@ class CommunityPost {
     this.isLiked = false,
   });
 
-  CommunityPost copyWith({
-    int? upvotes,
-    bool? isLiked,
-  }) {
+  CommunityPost copyWith({int? upvotes, bool? isLiked}) {
     return CommunityPost(
       id: id,
       authorName: authorName,

@@ -31,26 +31,34 @@ class _SplashPageState extends State<SplashPage> {
           Positioned(
             top: -100,
             left: -100,
-            child: Container(
-              width: 350,
-              height: 350,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primaryBlue.withValues(alpha: 0.25),
-              ),
-            ).animate().fadeIn(duration: 1000.ms).scale(begin: const Offset(0.8, 0.8)),
+            child:
+                Container(
+                      width: 350,
+                      height: 350,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.primaryBlue.withValues(alpha: 0.25),
+                      ),
+                    )
+                    .animate()
+                    .fadeIn(duration: 1000.ms)
+                    .scale(begin: const Offset(0.8, 0.8)),
           ),
           Positioned(
             bottom: -100,
             right: -100,
-            child: Container(
-              width: 350,
-              height: 350,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primaryPurple.withValues(alpha: 0.25),
-              ),
-            ).animate().fadeIn(duration: 1000.ms).scale(begin: const Offset(0.8, 0.8)),
+            child:
+                Container(
+                      width: 350,
+                      height: 350,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.primaryPurple.withValues(alpha: 0.25),
+                      ),
+                    )
+                    .animate()
+                    .fadeIn(duration: 1000.ms)
+                    .scale(begin: const Offset(0.8, 0.8)),
           ),
 
           // Main Logo Content
@@ -60,24 +68,24 @@ class _SplashPageState extends State<SplashPage> {
               children: [
                 // Glowing Particle Icon
                 Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: AppColors.primaryGradient,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.cyanGlow.withValues(alpha: 0.4),
-                        blurRadius: 30,
-                        spreadRadius: 5,
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: AppColors.primaryGradient,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.cyanGlow.withValues(alpha: 0.4),
+                            blurRadius: 30,
+                            spreadRadius: 5,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.auto_awesome_rounded,
-                    size: 64,
-                    color: Colors.white,
-                  ),
-                )
+                      child: const Icon(
+                        Icons.auto_awesome_rounded,
+                        size: 64,
+                        color: Colors.white,
+                      ),
+                    )
                     .animate()
                     .scale(duration: 800.ms, curve: Curves.easeOutBack)
                     .shimmer(duration: 1500.ms, color: AppColors.cyanGlow),
@@ -85,17 +93,21 @@ class _SplashPageState extends State<SplashPage> {
 
                 // App Title
                 ShaderMask(
-                  shaderCallback: (bounds) => AppColors.primaryGradient.createShader(bounds),
-                  child: const Text(
-                    'SkillVerse AI',
-                    style: TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: -1.0,
-                    ),
-                  ),
-                ).animate().fadeIn(delay: 300.ms, duration: 600.ms).slideY(begin: 0.3, end: 0),
+                      shaderCallback: (bounds) =>
+                          AppColors.primaryGradient.createShader(bounds),
+                      child: const Text(
+                        'SkillVerse AI',
+                        style: TextStyle(
+                          fontSize: 40,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -1.0,
+                        ),
+                      ),
+                    )
+                    .animate()
+                    .fadeIn(delay: 300.ms, duration: 600.ms)
+                    .slideY(begin: 0.3, end: 0),
                 const SizedBox(height: 8),
 
                 // Subtitle Tagline
@@ -116,7 +128,9 @@ class _SplashPageState extends State<SplashPage> {
                     borderRadius: BorderRadius.circular(10),
                     child: const LinearProgressIndicator(
                       backgroundColor: AppColors.surface,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.cyanGlow),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.cyanGlow,
+                      ),
                       minHeight: 4,
                     ),
                   ),

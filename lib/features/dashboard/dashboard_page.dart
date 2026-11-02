@@ -20,7 +20,8 @@ class DashboardPage extends ConsumerStatefulWidget {
   ConsumerState<DashboardPage> createState() => _DashboardPageState();
 }
 
-class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTickerProviderStateMixin {
+class _DashboardPageState extends ConsumerState<DashboardPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -79,15 +80,24 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                       ),
                       // Drachma (Coins) Indicator
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.amber.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                          border: Border.all(
+                            color: Colors.amber.withValues(alpha: 0.4),
+                          ),
                         ),
                         child: Row(
                           children: const [
-                            Icon(Icons.toll_rounded, color: Colors.amber, size: 18),
+                            Icon(
+                              Icons.toll_rounded,
+                              color: Colors.amber,
+                              size: 18,
+                            ),
                             SizedBox(width: 6),
                             Text(
                               '1,240 d',
@@ -116,8 +126,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
               dividerColor: Colors.transparent,
               labelColor: AppColors.cyanGlow,
               unselectedLabelColor: AppColors.textMuted,
-              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+              ),
               tabs: const [
                 Tab(text: 'Overview'),
                 Tab(text: 'Competency Matrix'),
@@ -182,7 +198,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.primaryBlue.withValues(alpha: 0.15),
+                                  color: AppColors.primaryBlue.withValues(
+                                    alpha: 0.15,
+                                  ),
                                   blurRadius: 15,
                                   spreadRadius: 2,
                                 ),
@@ -191,13 +209,19 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                           ),
                           ShaderMask(
                             shaderCallback: (rect) {
-                              return AppColors.primaryGradient.createShader(rect);
+                              return AppColors.primaryGradient.createShader(
+                                rect,
+                              );
                             },
                             child: CircularProgressIndicator(
                               value: value,
                               strokeWidth: 8,
-                              backgroundColor: Colors.white.withValues(alpha: 0.08),
-                              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.08,
+                              ),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           ),
                           Column(
@@ -233,12 +257,22 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                     children: [
                       const Text(
                         '150 / 200 XP earned today',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       _buildDailyCheckItem("Complete 1 practice room", true),
-                      _buildDailyCheckItem("Read AI coach recommendation", true),
-                      _buildDailyCheckItem("Calibrate dynamic postural balance", false),
+                      _buildDailyCheckItem(
+                        "Read AI coach recommendation",
+                        true,
+                      ),
+                      _buildDailyCheckItem(
+                        "Calibrate dynamic postural balance",
+                        false,
+                      ),
                     ],
                   ),
                 ),
@@ -252,25 +286,33 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
           Row(
             children: [
               Expanded(
-                child: StatCard(
-                  title: 'Learning Velocity',
-                  value: '1.4x Speed',
-                  trend: 'Vanguard',
-                  isPositive: true,
-                  icon: Icons.speed_rounded,
-                  iconColor: AppColors.cyanGlow,
-                ).animate().fadeIn(duration: 400.ms, delay: 50.ms).slideY(begin: 0.1, end: 0.0),
+                child:
+                    StatCard(
+                          title: 'Learning Velocity',
+                          value: '1.4x Speed',
+                          trend: 'Vanguard',
+                          isPositive: true,
+                          icon: Icons.speed_rounded,
+                          iconColor: AppColors.cyanGlow,
+                        )
+                        .animate()
+                        .fadeIn(duration: 400.ms, delay: 50.ms)
+                        .slideY(begin: 0.1, end: 0.0),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: StatCard(
-                  title: 'XP Accumulated',
-                  value: '${user.xp} XP',
-                  trend: '+520 today',
-                  isPositive: true,
-                  icon: Icons.auto_awesome_rounded,
-                  iconColor: AppColors.primaryBlue,
-                ).animate().fadeIn(duration: 400.ms, delay: 150.ms).slideY(begin: 0.1, end: 0.0),
+                child:
+                    StatCard(
+                          title: 'XP Accumulated',
+                          value: '${user.xp} XP',
+                          trend: '+520 today',
+                          isPositive: true,
+                          icon: Icons.auto_awesome_rounded,
+                          iconColor: AppColors.primaryBlue,
+                        )
+                        .animate()
+                        .fadeIn(duration: 400.ms, delay: 150.ms)
+                        .slideY(begin: 0.1, end: 0.0),
               ),
             ],
           ),
@@ -278,25 +320,33 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
           Row(
             children: [
               Expanded(
-                child: StatCard(
-                  title: 'Current Level',
-                  value: 'LVL ${user.level}',
-                  trend: 'Top 0.6% rank',
-                  isPositive: true,
-                  icon: Icons.workspace_premium_rounded,
-                  iconColor: AppColors.primaryPurple,
-                ).animate().fadeIn(duration: 400.ms, delay: 250.ms).slideY(begin: 0.1, end: 0.0),
+                child:
+                    StatCard(
+                          title: 'Current Level',
+                          value: 'LVL ${user.level}',
+                          trend: 'Top 0.6% rank',
+                          isPositive: true,
+                          icon: Icons.workspace_premium_rounded,
+                          iconColor: AppColors.primaryPurple,
+                        )
+                        .animate()
+                        .fadeIn(duration: 400.ms, delay: 250.ms)
+                        .slideY(begin: 0.1, end: 0.0),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: StatCard(
-                  title: 'Active Streak',
-                  value: '${user.streakDays} Days',
-                  trend: 'Locked In',
-                  isPositive: true,
-                  icon: Icons.local_fire_department_rounded,
-                  iconColor: Colors.amber,
-                ).animate().fadeIn(duration: 400.ms, delay: 350.ms).slideY(begin: 0.1, end: 0.0),
+                child:
+                    StatCard(
+                          title: 'Active Streak',
+                          value: '${user.streakDays} Days',
+                          trend: 'Locked In',
+                          isPositive: true,
+                          icon: Icons.local_fire_department_rounded,
+                          iconColor: Colors.amber,
+                        )
+                        .animate()
+                        .fadeIn(duration: 400.ms, delay: 350.ms)
+                        .slideY(begin: 0.1, end: 0.0),
               ),
             ],
           ),
@@ -320,8 +370,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                   enabled: true,
                   touchTooltipData: BarTouchTooltipData(
                     getTooltipColor: (group) => AppColors.surfaceLight,
-                    tooltipBorder: const BorderSide(color: AppColors.glassBorder),
-                    tooltipPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    tooltipBorder: const BorderSide(
+                      color: AppColors.glassBorder,
+                    ),
+                    tooltipPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     tooltipMargin: 8,
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       return BarTooltipItem(
@@ -341,13 +396,25 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                     sideTitles: SideTitles(
                       showTitles: true,
                       getTitlesWidget: (val, meta) {
-                        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                        const days = [
+                          'Mon',
+                          'Tue',
+                          'Wed',
+                          'Thu',
+                          'Fri',
+                          'Sat',
+                          'Sun',
+                        ];
                         if (val.toInt() >= 0 && val.toInt() < days.length) {
                           return Padding(
                             padding: const EdgeInsets.only(top: 8.0),
                             child: Text(
                               days[val.toInt()],
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           );
                         }
@@ -360,18 +427,28 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                       showTitles: true,
                       reservedSize: 28,
                       getTitlesWidget: (value, meta) {
-                        if (value == 0 || value == 2 || value == 4 || value == 6) {
+                        if (value == 0 ||
+                            value == 2 ||
+                            value == 4 ||
+                            value == 6) {
                           return Text(
                             '${value.toInt()}h',
-                            style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 10,
+                            ),
                           );
                         }
                         return const SizedBox();
                       },
                     ),
                   ),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                 ),
                 gridData: FlGridData(
                   show: true,
@@ -414,8 +491,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                   enabled: true,
                   touchTooltipData: LineTouchTooltipData(
                     getTooltipColor: (spot) => AppColors.surfaceLight,
-                    tooltipBorder: const BorderSide(color: AppColors.glassBorder),
-                    tooltipPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    tooltipBorder: const BorderSide(
+                      color: AppColors.glassBorder,
+                    ),
+                    tooltipPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     getTooltipItems: (touchedSpots) {
                       return touchedSpots.map((spot) {
                         return LineTooltipItem(
@@ -429,25 +511,29 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                       }).toList();
                     },
                   ),
-                  getTouchedSpotIndicator: (LineChartBarData barData, List<int> spotIndexes) {
-                    return spotIndexes.map((index) {
-                      return TouchedSpotIndicatorData(
-                        FlLine(
-                          color: AppColors.primaryBlue.withValues(alpha: 0.4),
-                          strokeWidth: 2,
-                        ),
-                        FlDotData(
-                          show: true,
-                          getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                            radius: 6,
-                            color: AppColors.primaryBlue,
-                            strokeWidth: 2,
-                            strokeColor: Colors.white,
-                          ),
-                        ),
-                      );
-                    }).toList();
-                  },
+                  getTouchedSpotIndicator:
+                      (LineChartBarData barData, List<int> spotIndexes) {
+                        return spotIndexes.map((index) {
+                          return TouchedSpotIndicatorData(
+                            FlLine(
+                              color: AppColors.primaryBlue.withValues(
+                                alpha: 0.4,
+                              ),
+                              strokeWidth: 2,
+                            ),
+                            FlDotData(
+                              show: true,
+                              getDotPainter: (spot, percent, barData, index) =>
+                                  FlDotCirclePainter(
+                                    radius: 6,
+                                    color: AppColors.primaryBlue,
+                                    strokeWidth: 2,
+                                    strokeColor: Colors.white,
+                                  ),
+                            ),
+                          );
+                        }).toList();
+                      },
                 ),
                 gridData: FlGridData(
                   show: true,
@@ -468,15 +554,45 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                       getTitlesWidget: (val, meta) {
                         switch (val.toInt()) {
                           case 0:
-                            return const Text('Jul 01', style: TextStyle(color: AppColors.textMuted, fontSize: 10));
+                            return const Text(
+                              'Jul 01',
+                              style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 10,
+                              ),
+                            );
                           case 6:
-                            return const Text('Jul 07', style: TextStyle(color: AppColors.textMuted, fontSize: 10));
+                            return const Text(
+                              'Jul 07',
+                              style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 10,
+                              ),
+                            );
                           case 13:
-                            return const Text('Jul 14', style: TextStyle(color: AppColors.textMuted, fontSize: 10));
+                            return const Text(
+                              'Jul 14',
+                              style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 10,
+                              ),
+                            );
                           case 20:
-                            return const Text('Jul 21', style: TextStyle(color: AppColors.textMuted, fontSize: 10));
+                            return const Text(
+                              'Jul 21',
+                              style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 10,
+                              ),
+                            );
                           case 27:
-                            return const Text('Jul 28', style: TextStyle(color: AppColors.textMuted, fontSize: 10));
+                            return const Text(
+                              'Jul 28',
+                              style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 10,
+                              ),
+                            );
                         }
                         return const SizedBox();
                       },
@@ -487,18 +603,27 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                       showTitles: true,
                       reservedSize: 36,
                       getTitlesWidget: (value, meta) {
-                        if (value == 10000 || value == 15000 || value == 20000) {
+                        if (value == 10000 ||
+                            value == 15000 ||
+                            value == 20000) {
                           return Text(
                             '${(value / 1000).toStringAsFixed(0)}k',
-                            style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 10,
+                            ),
                           );
                         }
                         return const SizedBox();
                       },
                     ),
                   ),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                 ),
                 borderData: FlBorderData(show: false),
                 minX: 0,
@@ -548,7 +673,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
       child: Row(
         children: [
           Icon(
-            done ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+            done
+                ? Icons.check_circle_rounded
+                : Icons.radio_button_unchecked_rounded,
             color: done ? AppColors.emeraldGreen : AppColors.textMuted,
             size: 16,
           ),
@@ -619,7 +746,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                   alignment: WrapAlignment.center,
                   children: metrics.entries.map((e) {
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(10),
@@ -631,12 +761,28 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                           Container(
                             width: 8,
                             height: 8,
-                            decoration: const BoxDecoration(color: AppColors.primaryBlue, shape: BoxShape.circle),
+                            decoration: const BoxDecoration(
+                              color: AppColors.primaryBlue,
+                              shape: BoxShape.circle,
+                            ),
                           ),
                           const SizedBox(width: 6),
-                          Text(e.key, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                          Text(
+                            e.key,
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 11,
+                            ),
+                          ),
                           const SizedBox(width: 6),
-                          Text('${(e.value * 100).toInt()}%', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                          Text(
+                            '${(e.value * 100).toInt()}%',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
                     );
@@ -666,37 +812,65 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.psychology_rounded, color: AppColors.cyanGlow, size: 22),
+                        Icon(
+                          Icons.psychology_rounded,
+                          color: AppColors.cyanGlow,
+                          size: 22,
+                        ),
                         SizedBox(width: 8),
                         Text(
                           'Alex_Vance_Twin_v2.4',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
                         ),
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.emeraldGreen.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.emeraldGreen.withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: AppColors.emeraldGreen.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(color: AppColors.emeraldGreen, shape: BoxShape.circle),
-                          ).animate(onPlay: (controller) => controller.repeat(reverse: true)).custom(
-                            duration: 1000.ms,
-                            builder: (context, val, child) => Opacity(
-                              opacity: 0.3 + (val * 0.7),
-                              child: child,
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.emeraldGreen,
+                                  shape: BoxShape.circle,
+                                ),
+                              )
+                              .animate(
+                                onPlay: (controller) =>
+                                    controller.repeat(reverse: true),
+                              )
+                              .custom(
+                                duration: 1000.ms,
+                                builder: (context, val, child) => Opacity(
+                                  opacity: 0.3 + (val * 0.7),
+                                  child: child,
+                                ),
+                              ),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'SYNCED',
+                            style: TextStyle(
+                              color: AppColors.emeraldGreen,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 9,
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          const Text('SYNCED', style: TextStyle(color: AppColors.emeraldGreen, fontWeight: FontWeight.bold, fontSize: 9)),
                         ],
                       ),
                     ),
@@ -705,7 +879,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                 const SizedBox(height: 12),
                 const Text(
                   'Your cognitive & biomechanical simulation parameters are compiled. The model matches your motor response profile and speed metrics.',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12, height: 1.4),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
                 ),
                 const SizedBox(height: 14),
                 const Divider(color: AppColors.glassBorder),
@@ -738,8 +916,22 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Principal AI Architect Target', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                    Text('94.8% Match', style: TextStyle(color: AppColors.primaryBlue, fontWeight: FontWeight.bold, fontSize: 14)),
+                    const Text(
+                      'Principal AI Architect Target',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      '94.8% Match',
+                      style: TextStyle(
+                        color: AppColors.primaryBlue,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -754,7 +946,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                         value: value,
                         minHeight: 8,
                         backgroundColor: AppColors.surface,
-                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryBlue),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          AppColors.primaryBlue,
+                        ),
                       );
                     },
                   ),
@@ -762,7 +956,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                 const SizedBox(height: 16),
                 const Text(
                   'Core Domain Gaps to Reach 100% Vector Fit:',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 _buildGapItem("Distributed Consensus Mechanisms", 0.82),
@@ -776,58 +974,97 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
           // Strengths & Weaknesses
           SectionHeader(
             title: "Strengths & Weaknesses",
-            subtitle: "Top verified capabilities & telemetry growth opportunities",
+            subtitle:
+                "Top verified capabilities & telemetry growth opportunities",
           ),
           const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: GlassContainer(
-                  padding: const EdgeInsets.all(14),
-                  backgroundColor: AppColors.emeraldGreen.withValues(alpha: 0.05),
-                  borderColor: AppColors.emeraldGreen.withValues(alpha: 0.25),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: const [
-                          Icon(Icons.add_task_rounded, color: AppColors.emeraldGreen, size: 16),
-                          SizedBox(width: 6),
-                          Text('Strengths', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      _buildBulletItem("QLoRA Tuning"),
-                      _buildBulletItem("Postural Symmetry"),
-                      _buildBulletItem("High-Concurrency"),
-                    ],
-                  ),
-                ).animate().fadeIn(duration: 400.ms, delay: 250.ms).slideX(begin: -0.1, end: 0.0),
+                child:
+                    GlassContainer(
+                          padding: const EdgeInsets.all(14),
+                          backgroundColor: AppColors.emeraldGreen.withValues(
+                            alpha: 0.05,
+                          ),
+                          borderColor: AppColors.emeraldGreen.withValues(
+                            alpha: 0.25,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: const [
+                                  Icon(
+                                    Icons.add_task_rounded,
+                                    color: AppColors.emeraldGreen,
+                                    size: 16,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Strengths',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              _buildBulletItem("QLoRA Tuning"),
+                              _buildBulletItem("Postural Symmetry"),
+                              _buildBulletItem("High-Concurrency"),
+                            ],
+                          ),
+                        )
+                        .animate()
+                        .fadeIn(duration: 400.ms, delay: 250.ms)
+                        .slideX(begin: -0.1, end: 0.0),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: GlassContainer(
-                  padding: const EdgeInsets.all(14),
-                  backgroundColor: AppColors.roseError.withValues(alpha: 0.05),
-                  borderColor: AppColors.roseError.withValues(alpha: 0.25),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: const [
-                          Icon(Icons.warning_amber_rounded, color: AppColors.amberWarning, size: 16),
-                          SizedBox(width: 6),
-                          Text('Weaknesses', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      _buildBulletItem("Model Quantization"),
-                      _buildBulletItem("Explosive Squat Lift"),
-                      _buildBulletItem("Vagal Tone Control"),
-                    ],
-                  ),
-                ).animate().fadeIn(duration: 400.ms, delay: 250.ms).slideX(begin: 0.1, end: 0.0),
+                child:
+                    GlassContainer(
+                          padding: const EdgeInsets.all(14),
+                          backgroundColor: AppColors.roseError.withValues(
+                            alpha: 0.05,
+                          ),
+                          borderColor: AppColors.roseError.withValues(
+                            alpha: 0.25,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: const [
+                                  Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: AppColors.amberWarning,
+                                    size: 16,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Weaknesses',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              _buildBulletItem("Model Quantization"),
+                              _buildBulletItem("Explosive Squat Lift"),
+                              _buildBulletItem("Vagal Tone Control"),
+                            ],
+                          ),
+                        )
+                        .animate()
+                        .fadeIn(duration: 400.ms, delay: 250.ms)
+                        .slideX(begin: 0.1, end: 0.0),
               ),
             ],
           ),
@@ -843,7 +1080,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
         children: [
           Expanded(
             flex: 2,
-            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 12)),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -853,12 +1095,17 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                 value: value,
                 minHeight: 4,
                 backgroundColor: AppColors.surface,
-                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryPurple),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  AppColors.primaryPurple,
+                ),
               ),
             ),
           ),
           const SizedBox(width: 8),
-          Text('${(value * 100).toInt()}%', style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+          Text(
+            '${(value * 100).toInt()}%',
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+          ),
         ],
       ),
     );
@@ -869,9 +1116,24 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
       padding: const EdgeInsets.only(bottom: 6.0),
       child: Row(
         children: [
-          Container(width: 4, height: 4, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+          Container(
+            width: 4,
+            height: 4,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
           const SizedBox(width: 6),
-          Expanded(child: Text(text, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12))),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -933,7 +1195,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
             subtitle: "Interactive biomechanical model hot-spots",
           ),
           const SizedBox(height: 12),
-          const HolographicTwinScanner().animate().fadeIn(duration: 600.ms, delay: 100.ms),
+          const HolographicTwinScanner().animate().fadeIn(
+            duration: 600.ms,
+            delay: 100.ms,
+          ),
 
           const SizedBox(height: 24),
 
@@ -949,17 +1214,33 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
               children: [
                 Row(
                   children: [
-                    _buildMetricDetailBox("Height", "${onboarding['height'] ?? 175.0} cm", Icons.height_rounded),
+                    _buildMetricDetailBox(
+                      "Height",
+                      "${onboarding['height'] ?? 175.0} cm",
+                      Icons.height_rounded,
+                    ),
                     const SizedBox(width: 10),
-                    _buildMetricDetailBox("Weight", "${onboarding['weight'] ?? 70.0} kg", Icons.fitness_center_rounded),
+                    _buildMetricDetailBox(
+                      "Weight",
+                      "${onboarding['weight'] ?? 70.0} kg",
+                      Icons.fitness_center_rounded,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    _buildMetricDetailBox("Dominant Hand", "${onboarding['dominantHand'] ?? 'Right'}", Icons.back_hand_rounded),
+                    _buildMetricDetailBox(
+                      "Dominant Hand",
+                      "${onboarding['dominantHand'] ?? 'Right'}",
+                      Icons.back_hand_rounded,
+                    ),
                     const SizedBox(width: 10),
-                    _buildMetricDetailBox("Vagal Tone (HRV)", "68 ms", Icons.favorite_rounded),
+                    _buildMetricDetailBox(
+                      "Vagal Tone (HRV)",
+                      "68 ms",
+                      Icons.favorite_rounded,
+                    ),
                   ],
                 ),
               ],
@@ -995,9 +1276,22 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
               const SizedBox(height: 3),
-              Text(time, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+              Text(
+                time,
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 11,
+                ),
+              ),
             ],
           ),
         ),
@@ -1006,7 +1300,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
           children: [
             SkillBadge(label: grade, color: AppColors.emeraldGreen),
             const SizedBox(height: 4),
-            Text(points, style: const TextStyle(color: AppColors.primaryBlue, fontWeight: FontWeight.bold, fontSize: 11)),
+            Text(
+              points,
+              style: const TextStyle(
+                color: AppColors.primaryBlue,
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+              ),
+            ),
           ],
         ),
       ],
@@ -1040,9 +1341,22 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 10,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1079,7 +1393,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                   icon: Icons.psychology_rounded,
                   color: AppColors.primaryBlue,
                   title: "Quantization Target Recommendation",
-                  description: "Simulate **LLM Fine-Tuning** to narrow your 3.8% gap against the Senior Architect cohort profile.",
+                  description:
+                      "Simulate **LLM Fine-Tuning** to narrow your 3.8% gap against the Senior Architect cohort profile.",
                   actionText: "Launch Simulator",
                   onAction: () => context.push('/practice'),
                 ),
@@ -1088,7 +1403,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                   icon: Icons.balance_rounded,
                   color: AppColors.emeraldGreen,
                   title: "Postural Stability Vector Correction",
-                  description: "Postural Sensor Grid indicates slight trunk lean during Olympic Squats. Focus on symmetry calibrations.",
+                  description:
+                      "Postural Sensor Grid indicates slight trunk lean during Olympic Squats. Focus on symmetry calibrations.",
                   actionText: "Open AI Coach",
                   onAction: () => context.push('/ai-coach'),
                 ),
@@ -1149,8 +1465,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                 onTap: () => _showBadgeDetails(context, badge),
                 borderRadius: BorderRadius.circular(16),
                 child: GlassContainer(
-                  borderColor: badge.isUnlocked ? badge.color : AppColors.glassBorder,
-                  backgroundColor: badge.isUnlocked ? badge.color.withValues(alpha: 0.05) : null,
+                  borderColor: badge.isUnlocked
+                      ? badge.color
+                      : AppColors.glassBorder,
+                  backgroundColor: badge.isUnlocked
+                      ? badge.color.withValues(alpha: 0.05)
+                      : null,
                   padding: const EdgeInsets.all(12),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1159,16 +1479,30 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: badge.isUnlocked ? badge.color.withValues(alpha: 0.15) : AppColors.surface,
-                          border: Border.all(color: badge.isUnlocked ? badge.color : AppColors.glassBorder),
+                          color: badge.isUnlocked
+                              ? badge.color.withValues(alpha: 0.15)
+                              : AppColors.surface,
+                          border: Border.all(
+                            color: badge.isUnlocked
+                                ? badge.color
+                                : AppColors.glassBorder,
+                          ),
                         ),
-                        child: Icon(badge.icon, color: badge.isUnlocked ? badge.color : AppColors.textMuted, size: 24),
+                        child: Icon(
+                          badge.icon,
+                          color: badge.isUnlocked
+                              ? badge.color
+                              : AppColors.textMuted,
+                          size: 24,
+                        ),
                       ),
                       Text(
                         badge.title,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: badge.isUnlocked ? Colors.white : AppColors.textMuted,
+                          color: badge.isUnlocked
+                              ? Colors.white
+                              : AppColors.textMuted,
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
@@ -1178,10 +1512,16 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                         textAlign: TextAlign.center,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: AppColors.textMuted, fontSize: 9),
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 9,
+                        ),
                       ),
                       if (badge.isUnlocked)
-                        SkillBadge(label: '+${badge.points} XP', color: badge.color)
+                        SkillBadge(
+                          label: '+${badge.points} XP',
+                          color: badge.color,
+                        )
                       else
                         ClipRRect(
                           borderRadius: BorderRadius.circular(4),
@@ -1189,7 +1529,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                             value: badge.progress,
                             minHeight: 4,
                             backgroundColor: AppColors.surface,
-                            valueColor: AlwaysStoppedAnimation<Color>(badge.color),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              badge.color,
+                            ),
                           ),
                         ),
                     ],
@@ -1214,7 +1556,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
               color: Colors.transparent,
               child: GlassContainer(
                 hasGlow: badge.isUnlocked,
-                borderColor: badge.isUnlocked ? badge.color : AppColors.glassBorder,
+                borderColor: badge.isUnlocked
+                    ? badge.color
+                    : AppColors.glassBorder,
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1223,30 +1567,52 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: badge.isUnlocked ? badge.color.withValues(alpha: 0.15) : AppColors.surface,
-                        border: Border.all(color: badge.isUnlocked ? badge.color : AppColors.glassBorder, width: 2),
+                        color: badge.isUnlocked
+                            ? badge.color.withValues(alpha: 0.15)
+                            : AppColors.surface,
+                        border: Border.all(
+                          color: badge.isUnlocked
+                              ? badge.color
+                              : AppColors.glassBorder,
+                          width: 2,
+                        ),
                         boxShadow: badge.isUnlocked
                             ? [
                                 BoxShadow(
                                   color: badge.color.withValues(alpha: 0.3),
                                   blurRadius: 20,
                                   spreadRadius: 2,
-                                )
+                                ),
                               ]
                             : null,
                       ),
-                      child: Icon(badge.icon, color: badge.isUnlocked ? badge.color : AppColors.textMuted, size: 48),
-                    ).animate().scale(duration: 400.ms, curve: Curves.elasticOut),
+                      child: Icon(
+                        badge.icon,
+                        color: badge.isUnlocked
+                            ? badge.color
+                            : AppColors.textMuted,
+                        size: 48,
+                      ),
+                    ).animate().scale(
+                      duration: 400.ms,
+                      curve: Curves.elasticOut,
+                    ),
                     const SizedBox(height: 18),
                     Text(
                       badge.title,
-                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       badge.isUnlocked ? 'UNLOCKED ACHIEVEMENT' : 'IN PROGRESS',
                       style: TextStyle(
-                        color: badge.isUnlocked ? AppColors.emeraldGreen : AppColors.amberWarning,
+                        color: badge.isUnlocked
+                            ? AppColors.emeraldGreen
+                            : AppColors.amberWarning,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.0,
@@ -1256,20 +1622,33 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                     Text(
                       badge.description,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
                     ),
                     const SizedBox(height: 20),
                     if (badge.isUnlocked)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: badge.color.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: badge.color.withValues(alpha: 0.3)),
+                          border: Border.all(
+                            color: badge.color.withValues(alpha: 0.3),
+                          ),
                         ),
                         child: Text(
                           '+${badge.points} XP Reward Claimed',
-                          style: TextStyle(color: badge.color, fontWeight: FontWeight.bold, fontSize: 13),
+                          style: TextStyle(
+                            color: badge.color,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
                         ),
                       )
                     else ...[
@@ -1279,13 +1658,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                           value: badge.progress,
                           minHeight: 8,
                           backgroundColor: AppColors.surface,
-                          valueColor: AlwaysStoppedAnimation<Color>(badge.color),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            badge.color,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Progress: ${(badge.progress * 100).toInt()}%',
-                        style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 11,
+                        ),
                       ),
                     ],
                     const SizedBox(height: 24),
@@ -1293,7 +1677,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                       onTap: () => Navigator.pop(context),
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 10,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.surfaceLight,
                           borderRadius: BorderRadius.circular(12),
@@ -1301,7 +1688,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                         ),
                         child: const Text(
                           'Close Uplink',
-                          style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -1344,12 +1735,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   RichText(
                     text: TextSpan(
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, height: 1.4),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
                       children: _parseBoldMarkdown(description),
                     ),
                   ),
@@ -1366,7 +1765,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
               onTap: onAction,
               borderRadius: BorderRadius.circular(8),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -1384,7 +1786,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Icon(Icons.arrow_forward_ios_rounded, color: color, size: 10),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      color: color,
+                      size: 10,
+                    ),
                   ],
                 ),
               ),
@@ -1400,7 +1806,15 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
     final parts = text.split('**');
     for (int i = 0; i < parts.length; i++) {
       if (i % 2 == 1) {
-        spans.add(TextSpan(text: parts[i], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)));
+        spans.add(
+          TextSpan(
+            text: parts[i],
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
       } else {
         spans.add(TextSpan(text: parts[i]));
       }
@@ -1430,9 +1844,24 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(topic, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+              Text(
+                topic,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
               const SizedBox(height: 3),
-              Text('Coach: $coach', style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+              Text(
+                'Coach: $coach',
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 11,
+                ),
+              ),
             ],
           ),
         ),
@@ -1445,7 +1874,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with SingleTicker
           ),
           child: Text(
             time,
-            style: const TextStyle(color: AppColors.cyanGlow, fontWeight: FontWeight.bold, fontSize: 9),
+            style: const TextStyle(
+              color: AppColors.cyanGlow,
+              fontWeight: FontWeight.bold,
+              fontSize: 9,
+            ),
           ),
         ),
       ],
@@ -1463,7 +1896,14 @@ class _SmallParameterText extends StatelessWidget {
       children: [
         const CircleAvatar(radius: 2.5, backgroundColor: AppColors.primaryBlue),
         const SizedBox(width: 6),
-        Text(text, style: const TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w600)),
+        Text(
+          text,
+          style: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
@@ -1476,7 +1916,8 @@ class HolographicTwinScanner extends StatefulWidget {
   State<HolographicTwinScanner> createState() => _HolographicTwinScannerState();
 }
 
-class _HolographicTwinScannerState extends State<HolographicTwinScanner> with SingleTickerProviderStateMixin {
+class _HolographicTwinScannerState extends State<HolographicTwinScanner>
+    with SingleTickerProviderStateMixin {
   late AnimationController _scanController;
   String _selectedHotspot = 'Head';
 
@@ -1484,22 +1925,26 @@ class _HolographicTwinScannerState extends State<HolographicTwinScanner> with Si
     'Head': {
       'title': 'Vagal Tone (HRV)',
       'value': '68 ms',
-      'desc': 'Measures autonomic neural synchronization. Your parasympathetic response indicates high resilience & fast cardiovascular calibration.',
+      'desc':
+          'Measures autonomic neural synchronization. Your parasympathetic response indicates high resilience & fast cardiovascular calibration.',
     },
     'Torso': {
       'title': 'Postural Precision Index',
       'value': '94.2%',
-      'desc': 'Trunk alignment relative to gravity vector. Indicates excellent spinal stabilization with negligible shear torque.',
+      'desc':
+          'Trunk alignment relative to gravity vector. Indicates excellent spinal stabilization with negligible shear torque.',
     },
     'Pelvis': {
       'title': 'Center of Gravity Deviation',
       'value': '3.2%',
-      'desc': 'Dynamic balance sway deviation during load transition. Minimal drift measured across sagittal planes.',
+      'desc':
+          'Dynamic balance sway deviation during load transition. Minimal drift measured across sagittal planes.',
     },
     'Feet': {
       'title': 'Stance Weight Symmetry',
       'value': '51% L / 49% R',
-      'desc': 'Ground reaction force distribution. Bilateral limb balance is close to absolute parity (ideal torque distribution).',
+      'desc':
+          'Ground reaction force distribution. Bilateral limb balance is close to absolute parity (ideal torque distribution).',
     },
   };
 
@@ -1535,27 +1980,37 @@ class _HolographicTwinScannerState extends State<HolographicTwinScanner> with Si
             alignment: Alignment.center,
             children: [
               Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: (isSelected ? AppColors.primaryBlue : AppColors.cyanGlow).withValues(alpha: 0.15),
-                  border: Border.all(
-                    color: isSelected ? AppColors.primaryBlue : AppColors.cyanGlow,
-                    width: 1,
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color:
+                          (isSelected
+                                  ? AppColors.primaryBlue
+                                  : AppColors.cyanGlow)
+                              .withValues(alpha: 0.15),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.primaryBlue
+                            : AppColors.cyanGlow,
+                        width: 1,
+                      ),
+                    ),
+                  )
+                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                  .scale(
+                    duration: 800.ms,
+                    begin: const Offset(0.8, 0.8),
+                    end: const Offset(1.3, 1.3),
                   ),
-                ),
-              ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(
-                duration: 800.ms,
-                begin: const Offset(0.8, 0.8),
-                end: const Offset(1.3, 1.3),
-              ),
               Container(
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isSelected ? AppColors.primaryBlue : AppColors.cyanGlow,
+                  color: isSelected
+                      ? AppColors.primaryBlue
+                      : AppColors.cyanGlow,
                 ),
               ),
             ],
@@ -1647,10 +2102,10 @@ class _HolographicTwinScannerState extends State<HolographicTwinScanner> with Si
                     _selectedHotspot == 'Head'
                         ? Icons.favorite_rounded
                         : _selectedHotspot == 'Torso'
-                            ? Icons.accessibility_new_rounded
-                            : _selectedHotspot == 'Pelvis'
-                                ? Icons.gps_fixed_rounded
-                                : Icons.height_rounded,
+                        ? Icons.accessibility_new_rounded
+                        : _selectedHotspot == 'Pelvis'
+                        ? Icons.gps_fixed_rounded
+                        : Icons.height_rounded,
                     color: AppColors.primaryBlue,
                     size: 20,
                   ),
@@ -1665,7 +2120,10 @@ class _HolographicTwinScannerState extends State<HolographicTwinScanner> with Si
                   ),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primaryBlue.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
@@ -1731,19 +2189,59 @@ class HolographicScannerPainter extends CustomPainter {
     canvas.drawCircle(Offset(width / 2, 50), 16, glowPaint);
 
     canvas.drawLine(Offset(width / 2, 66), Offset(width / 2, 190), bodyPaint);
-    canvas.drawLine(Offset(width / 2 - 35, 80), Offset(width / 2 + 35, 80), bodyPaint);
+    canvas.drawLine(
+      Offset(width / 2 - 35, 80),
+      Offset(width / 2 + 35, 80),
+      bodyPaint,
+    );
 
-    canvas.drawLine(Offset(width / 2 - 35, 80), Offset(width / 2 - 45, 140), bodyPaint);
-    canvas.drawLine(Offset(width / 2 - 45, 140), Offset(width / 2 - 40, 180), bodyPaint);
-    canvas.drawLine(Offset(width / 2 + 35, 80), Offset(width / 2 + 45, 140), bodyPaint);
-    canvas.drawLine(Offset(width / 2 + 45, 140), Offset(width / 2 + 40, 180), bodyPaint);
+    canvas.drawLine(
+      Offset(width / 2 - 35, 80),
+      Offset(width / 2 - 45, 140),
+      bodyPaint,
+    );
+    canvas.drawLine(
+      Offset(width / 2 - 45, 140),
+      Offset(width / 2 - 40, 180),
+      bodyPaint,
+    );
+    canvas.drawLine(
+      Offset(width / 2 + 35, 80),
+      Offset(width / 2 + 45, 140),
+      bodyPaint,
+    );
+    canvas.drawLine(
+      Offset(width / 2 + 45, 140),
+      Offset(width / 2 + 40, 180),
+      bodyPaint,
+    );
 
-    canvas.drawLine(Offset(width / 2 - 20, 190), Offset(width / 2 + 20, 190), bodyPaint);
+    canvas.drawLine(
+      Offset(width / 2 - 20, 190),
+      Offset(width / 2 + 20, 190),
+      bodyPaint,
+    );
 
-    canvas.drawLine(Offset(width / 2 - 20, 190), Offset(width / 2 - 25, 250), bodyPaint);
-    canvas.drawLine(Offset(width / 2 - 25, 250), Offset(width / 2 - 20, 300), bodyPaint);
-    canvas.drawLine(Offset(width / 2 + 20, 190), Offset(width / 2 + 25, 250), bodyPaint);
-    canvas.drawLine(Offset(width / 2 + 25, 250), Offset(width / 2 + 20, 300), bodyPaint);
+    canvas.drawLine(
+      Offset(width / 2 - 20, 190),
+      Offset(width / 2 - 25, 250),
+      bodyPaint,
+    );
+    canvas.drawLine(
+      Offset(width / 2 - 25, 250),
+      Offset(width / 2 - 20, 300),
+      bodyPaint,
+    );
+    canvas.drawLine(
+      Offset(width / 2 + 20, 190),
+      Offset(width / 2 + 25, 250),
+      bodyPaint,
+    );
+    canvas.drawLine(
+      Offset(width / 2 + 25, 250),
+      Offset(width / 2 + 20, 300),
+      bodyPaint,
+    );
 
     final scanY = height * scanProgress;
     final laserPaint = Paint()

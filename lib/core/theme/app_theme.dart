@@ -17,42 +17,43 @@ class AppTheme {
         onSecondary: Colors.white,
         onSurface: AppColors.textPrimary,
       ),
-      textTheme: GoogleFonts.plusJakartaSansTextTheme(
-        ThemeData.dark().textTheme,
-      ).copyWith(
-        displayLarge: GoogleFonts.plusJakartaSans(
-          color: AppColors.textPrimary,
-          fontSize: 36,
-          fontWeight: FontWeight.bold,
-          letterSpacing: -1.0,
-        ),
-        displayMedium: GoogleFonts.plusJakartaSans(
-          color: AppColors.textPrimary,
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-          letterSpacing: -0.5,
-        ),
-        headlineMedium: GoogleFonts.plusJakartaSans(
-          color: AppColors.textPrimary,
-          fontSize: 22,
-          fontWeight: FontWeight.w700,
-        ),
-        titleLarge: GoogleFonts.plusJakartaSans(
-          color: AppColors.textPrimary,
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-        ),
-        bodyLarge: GoogleFonts.plusJakartaSans(
-          color: AppColors.textPrimary,
-          fontSize: 16,
-          fontWeight: FontWeight.normal,
-        ),
-        bodyMedium: GoogleFonts.plusJakartaSans(
-          color: AppColors.textSecondary,
-          fontSize: 14,
-          fontWeight: FontWeight.normal,
-        ),
-      ),
+      textTheme:
+          GoogleFonts.plusJakartaSansTextTheme(
+            ThemeData.dark().textTheme,
+          ).copyWith(
+            displayLarge: GoogleFonts.plusJakartaSans(
+              color: AppColors.textPrimary,
+              fontSize: 36,
+              fontWeight: FontWeight.bold,
+              letterSpacing: -1.0,
+            ),
+            displayMedium: GoogleFonts.plusJakartaSans(
+              color: AppColors.textPrimary,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              letterSpacing: -0.5,
+            ),
+            headlineMedium: GoogleFonts.plusJakartaSans(
+              color: AppColors.textPrimary,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+            ),
+            titleLarge: GoogleFonts.plusJakartaSans(
+              color: AppColors.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+            bodyLarge: GoogleFonts.plusJakartaSans(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.normal,
+            ),
+            bodyMedium: GoogleFonts.plusJakartaSans(
+              color: AppColors.textSecondary,
+              fontSize: 14,
+              fontWeight: FontWeight.normal,
+            ),
+          ),
       cardTheme: CardThemeData(
         color: AppColors.surface.withValues(alpha: 0.7),
         elevation: 0,
@@ -64,7 +65,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surface.withValues(alpha: 0.5),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: AppColors.glassBorder),
