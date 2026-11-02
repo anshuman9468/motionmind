@@ -94,6 +94,19 @@ def test_multiple_consecutive_squats_count_each_completed_cycle():
     assert sum(result.completed_rep for result in results) == 2
 
 
+def test_five_complete_squats_count_once_each():
+    tracker = SquatTemporalTracker()
+    frames = []
+    timestamp = 0
+    for _ in range(5):
+        for frame in complete_squat(start_us=timestamp):
+            frames.append(frame)
+            timestamp = frame.timestamp_us + 100_000
+    results = run(tracker, frames)
+    assert tracker.repetition_count == 5
+    assert sum(result.completed_rep for result in results) == 5
+
+
 def test_incomplete_partial_squat_is_not_counted():
     tracker = SquatTemporalTracker()
     results = run(tracker, [sample(i * 100_000, angle) for i, angle in enumerate([170, 160, 145, 135, 145, 160, 170, 170])])

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../features/practice/models/skill_biomechanics.dart';
@@ -26,6 +27,14 @@ class MotionMindApiService {
   final http.Client _client;
   final String baseUrl;
   final Duration timeout;
+
+  /// Performs the same health request used by the connection indicator. The
+  /// result is intentionally separate from pose analysis: a healthy server
+  /// does not imply that a frame was accepted or that technique was scored.
+  Future<ApiHealthResult> health() async {
+    final data = await _get('/');
+    return ApiHealthResult.fromJson(data);
+  }
 
   Future<ApiVisionResult> analyzeVision({
     required String userId,
@@ -151,6 +160,8 @@ class MotionMindApiService {
     String? analysisStatus,
     String? skillId,
     double? qualityScore,
+    String? phase,
+    String? confidenceStatus,
     List<String> verifiedFindings = const [],
     Map<String, double?> verifiedMeasurements = const {},
   }) async {
@@ -164,6 +175,8 @@ class MotionMindApiService {
       if (analysisStatus != null) 'analysis_status': analysisStatus,
       if (skillId != null) 'skill_id': skillId,
       if (qualityScore != null) 'quality_score': qualityScore,
+      if (phase != null) 'phase': phase,
+      if (confidenceStatus != null) 'confidence_status': confidenceStatus,
       'verified_findings': verifiedFindings,
       'verified_measurements': availableMeasurements,
     });
@@ -316,18 +329,26 @@ class MotionMindApiService {
   }
 
   Future<Map<String, dynamic>> _get(String path) async {
+    final uri = Uri.parse('$baseUrl$path');
+    final stopwatch = Stopwatch()..start();
+    _logRequest('GET', uri);
     try {
       final response = await _client
-          .get(Uri.parse('$baseUrl$path'), headers: _headers)
+          .get(uri, headers: _headers)
           .timeout(timeout);
-      return _decodeResponse(response);
+      final decoded = _decodeResponse(response);
+      _logResponse('GET', uri, response, stopwatch);
+      return decoded;
     } on TimeoutException {
+      _logFailure('GET', uri, 'timeout', stopwatch);
       throw MotionMindApiException('The MotionMind backend timed out.');
     } on http.ClientException catch (error) {
+      _logFailure('GET', uri, error.toString(), stopwatch);
       throw MotionMindApiException(
         'Cannot reach the MotionMind backend: $error',
       );
     } on FormatException catch (error) {
+      _logFailure('GET', uri, 'invalid JSON: $error', stopwatch);
       throw MotionMindApiException('The backend returned invalid JSON: $error');
     }
   }
@@ -336,39 +357,51 @@ class MotionMindApiService {
     String path,
     Map<String, dynamic> body,
   ) async {
+    final uri = Uri.parse('$baseUrl$path');
+    final stopwatch = Stopwatch()..start();
+    _logRequest('POST', uri, bodyBytes: jsonEncode(body).length);
     try {
       final response = await _client
-          .post(
-            Uri.parse('$baseUrl$path'),
-            headers: _headers,
-            body: jsonEncode(body),
-          )
+          .post(uri, headers: _headers, body: jsonEncode(body))
           .timeout(timeout);
-      return _decodeResponse(response);
+      final decoded = _decodeResponse(response);
+      _logResponse('POST', uri, response, stopwatch);
+      return decoded;
     } on TimeoutException {
+      _logFailure('POST', uri, 'timeout', stopwatch);
       throw MotionMindApiException('The MotionMind backend timed out.');
     } on http.ClientException catch (error) {
+      _logFailure('POST', uri, error.toString(), stopwatch);
       throw MotionMindApiException(
         'Cannot reach the MotionMind backend: $error',
       );
     } on FormatException catch (error) {
+      _logFailure('POST', uri, 'invalid JSON: $error', stopwatch);
       throw MotionMindApiException('The backend returned invalid JSON: $error');
     }
   }
 
   Future<Map<String, dynamic>> _delete(String path) async {
+    final uri = Uri.parse('$baseUrl$path');
+    final stopwatch = Stopwatch()..start();
+    _logRequest('DELETE', uri);
     try {
       final response = await _client
-          .delete(Uri.parse('$baseUrl$path'), headers: _headers)
+          .delete(uri, headers: _headers)
           .timeout(timeout);
-      return _decodeResponse(response);
+      final decoded = _decodeResponse(response);
+      _logResponse('DELETE', uri, response, stopwatch);
+      return decoded;
     } on TimeoutException {
+      _logFailure('DELETE', uri, 'timeout', stopwatch);
       throw MotionMindApiException('The MotionMind backend timed out.');
     } on http.ClientException catch (error) {
+      _logFailure('DELETE', uri, error.toString(), stopwatch);
       throw MotionMindApiException(
         'Cannot reach the MotionMind backend: $error',
       );
     } on FormatException catch (error) {
+      _logFailure('DELETE', uri, 'invalid JSON: $error', stopwatch);
       throw MotionMindApiException('The backend returned invalid JSON: $error');
     }
   }
@@ -379,6 +412,10 @@ class MotionMindApiService {
   };
 
   Map<String, dynamic> _decodeResponse(http.Response response) {
+    _log(
+      'HTTP ${response.statusCode} ${response.request?.method ?? 'REQUEST'} '
+      '${response.request?.url ?? 'unknown'} (${response.bodyBytes.length} bytes)',
+    );
     final decoded = jsonDecode(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final detail = decoded is Map<String, dynamic>
@@ -394,6 +431,29 @@ class MotionMindApiService {
     }
     return Map<String, dynamic>.from(decoded);
   }
+
+  void _logRequest(String method, Uri uri, {int? bodyBytes}) {
+    _log('$method $uri${bodyBytes == null ? '' : ' (${bodyBytes} bytes)'}');
+  }
+
+  void _logResponse(
+    String method,
+    Uri uri,
+    http.Response response,
+    Stopwatch stopwatch,
+  ) {
+    _log('$method $uri completed in ${stopwatch.elapsedMilliseconds}ms');
+  }
+
+  void _logFailure(String method, Uri uri, String reason, Stopwatch stopwatch) {
+    _log(
+      '$method $uri failed after ${stopwatch.elapsedMilliseconds}ms: $reason',
+    );
+  }
+
+  void _log(String message) {
+    if (kDebugMode) debugPrint('[MotionMind API] $message');
+  }
 }
 
 class MotionMindApiException implements Exception {
@@ -404,6 +464,20 @@ class MotionMindApiException implements Exception {
 
   @override
   String toString() => message;
+}
+
+class ApiHealthResult {
+  const ApiHealthResult({required this.healthy, required this.system});
+
+  factory ApiHealthResult.fromJson(Map<String, dynamic> json) {
+    return ApiHealthResult(
+      healthy: json['status']?.toString().toLowerCase() == 'healthy',
+      system: json['system']?.toString() ?? 'MotionMind backend',
+    );
+  }
+
+  final bool healthy;
+  final String system;
 }
 
 class ApiVisionResult {

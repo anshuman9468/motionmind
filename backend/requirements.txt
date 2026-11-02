@@ -1,7 +1,9 @@
 fastapi>=0.110.0
 uvicorn>=0.28.0
 pydantic>=2.6.0
-google-generativeai>=0.4.0
+# 1.0.x uses the maintained google-genai client without forcing httpx 0.28,
+# which preserves the FastAPI TestClient contract used by this project.
+google-genai>=1.0.0,<1.1.0
 pytest>=8.0.0
 # Starlette's current TestClient contract requires the 0.27 JSON encoder
 # for the non-finite-coordinate rejection tests.

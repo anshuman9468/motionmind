@@ -12,8 +12,18 @@ HumanTrackingPayload payload(
 }) {
   final radians = kneeAngle * math.pi / 180.0;
   final joints = <String, Joint3DPoint>{
-    'leftShoulder': const Joint3DPoint(x: 0.1, y: 0.1, z: 0.0, confidence: 0.95),
-    'rightShoulder': const Joint3DPoint(x: 0.9, y: 0.1, z: 0.0, confidence: 0.95),
+    'leftShoulder': const Joint3DPoint(
+      x: 0.1,
+      y: 0.1,
+      z: 0.0,
+      confidence: 0.95,
+    ),
+    'rightShoulder': const Joint3DPoint(
+      x: 0.9,
+      y: 0.1,
+      z: 0.0,
+      confidence: 0.95,
+    ),
     'leftHip': const Joint3DPoint(x: 0.1, y: 0.5, z: 0.0, confidence: 0.95),
     'rightHip': const Joint3DPoint(x: 0.9, y: 0.5, z: 0.0, confidence: 0.95),
     'leftKnee': const Joint3DPoint(x: 0.3, y: 0.5, z: 0.0, confidence: 0.95),
@@ -94,6 +104,93 @@ void main() {
     expect(tracker.repetitionCount, 1);
     expect(results.where((result) => result.completedRep), hasLength(1));
     expect(results.map((result) => result.phase), contains(SquatPhase.bottom));
+  });
+
+  test('local tracker accepts the canonical exercise registry id', () {
+    final tracker = SquatTemporalTracker();
+    final angles = [
+      170.0,
+      170.0,
+      160.0,
+      140.0,
+      120.0,
+      105.0,
+      110.0,
+      125.0,
+      140.0,
+      155.0,
+      170.0,
+      170.0,
+      170.0,
+    ];
+    final results = <SquatTemporalResult>[];
+    for (var i = 0; i < angles.length; i++) {
+      final frame = payload((i + 1) * 100000, angles[i]);
+      results.add(
+        tracker.process(
+          HumanTrackingPayload(
+            humanDetected: frame.humanDetected,
+            trackingState: frame.trackingState,
+            trackingConfidence: frame.trackingConfidence,
+            multiplePeopleCount: frame.multiplePeopleCount,
+            selectedPersonId: frame.selectedPersonId,
+            joints: frame.joints,
+            landmarks: frame.landmarks,
+            timestampUs: frame.timestampUs,
+            sessionId: frame.sessionId,
+            skillId: 'squat',
+            subjectView: frame.subjectView,
+          ),
+        ),
+      );
+    }
+    expect(results.last.repetitionCount, 1);
+    expect(results.where((result) => result.completedRep), hasLength(1));
+  });
+
+  test('local tracker counts five complete canonical squats once each', () {
+    final tracker = SquatTemporalTracker();
+    final angles = [
+      170.0,
+      170.0,
+      160.0,
+      140.0,
+      120.0,
+      105.0,
+      110.0,
+      125.0,
+      140.0,
+      155.0,
+      170.0,
+      170.0,
+    ];
+    final completed = <SquatTemporalResult>[];
+    var timestamp = 100000;
+    for (var repetition = 0; repetition < 5; repetition++) {
+      for (final angle in angles) {
+        final frame = payload(timestamp, angle);
+        completed.add(
+          tracker.process(
+            HumanTrackingPayload(
+              humanDetected: frame.humanDetected,
+              trackingState: frame.trackingState,
+              trackingConfidence: frame.trackingConfidence,
+              multiplePeopleCount: frame.multiplePeopleCount,
+              selectedPersonId: frame.selectedPersonId,
+              joints: frame.joints,
+              landmarks: frame.landmarks,
+              timestampUs: frame.timestampUs,
+              sessionId: frame.sessionId,
+              skillId: 'squat',
+              subjectView: frame.subjectView,
+            ),
+          ),
+        );
+        timestamp += 100000;
+      }
+    }
+    expect(tracker.repetitionCount, 5);
+    expect(completed.where((result) => result.completedRep), hasLength(5));
   });
 
   test('local tracker abstains when a required knee is missing', () {

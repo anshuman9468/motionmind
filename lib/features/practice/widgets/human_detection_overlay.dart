@@ -24,6 +24,14 @@ class HumanDetectionOverlay extends StatelessWidget {
       return _buildBodyNotClearOverlay();
     }
 
+    // The practice page owns the compact tracking chip.  Do not paint a
+    // second, wide "HUMAN LOCKED" banner over the camera controls; that was
+    // the source of the stacked/overlapping status pills on smaller phones.
+    if (payload.multiplePeopleCount <= 1 &&
+        payload.trackingState != HumanDetectionState.multiplePeopleDetected) {
+      return const SizedBox.shrink();
+    }
+
     return Stack(
       children: [
         // Human Locked Status Chip (Top Center)

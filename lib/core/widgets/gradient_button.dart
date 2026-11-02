@@ -57,7 +57,10 @@ class GradientButton extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
+              // The button is commonly placed in an Expanded with a narrow
+              // phone width.  Keep the row constrained by its parent so a
+              // long action label cannot paint outside the button.
+              mainAxisSize: MainAxisSize.max,
               children: [
                 if (isLoading)
                   const SizedBox(
@@ -73,13 +76,18 @@ class GradientButton extends StatelessWidget {
                     Icon(icon, color: Colors.white, size: 20),
                     const SizedBox(width: 8),
                   ],
-                  Text(
-                    text,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.2,
+                  Flexible(
+                    child: Text(
+                      text,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
+                      ),
                     ),
                   ),
                 ],

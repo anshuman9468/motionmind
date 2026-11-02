@@ -227,7 +227,10 @@ class SquatTemporalTracker {
     if (_frames.length > maxBufferSize) _frames.removeAt(0);
 
     final skillId = payload.skillId ?? '';
-    if (skillId != 'sk_3' && skillId != 'sk_squat') {
+    // The current exercise registry sends the canonical `squat` id. Keep the
+    // historical aliases for recorded fixtures, but never reject a real
+    // camera session merely because it uses the registry id.
+    if (skillId != 'squat' && skillId != 'sk_3' && skillId != 'sk_squat') {
       _resetPhaseOnly();
       return _unavailable(
         BiomechanicsEvaluationStatus.insufficientData,

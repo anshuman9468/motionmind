@@ -157,6 +157,31 @@ flutter build apk --debug
 The APK is generated at
 `build/app/outputs/flutter-apk/app-debug.apk`. Build output is ignored by Git.
 
+### Live diagnostics
+
+The practice screen reports the backend state (`Connecting`, `Online`,
+`Offline`, or `Request failed`) and shows the most recent API/pose latency in
+debug builds. Flutter also logs each request as `[MotionMind API] ...`; Android
+native inference failures are visible with:
+
+```bash
+adb logcat -s SkillVerseAI
+```
+
+For a phone connected over ADB, verify the actual transport before opening a
+practice session:
+
+```bash
+adb reverse tcp:8000 tcp:8000
+curl http://127.0.0.1:8000/
+```
+
+The camera loop remains on-device (camera → MediaPipe → timestamped local
+state machine). Landmark samples are sent to FastAPI at a bounded rate for
+vision, biomechanics, temporal verification, and coaching. A failed request
+leaves the local tracker available and is shown as offline; it is never
+reported as a successful backend result.
+
 ## Run on a phone
 
 ### USB workflow — recommended

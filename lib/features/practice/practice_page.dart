@@ -59,6 +59,11 @@ class _PracticePageState extends State<PracticePage>
   bool _onDeviceTrackingReady = false;
   DateTime _nextPoseFrameAt = DateTime.fromMillisecondsSinceEpoch(0);
   String? _onDevicePoseError;
+  int _cameraFramesSeen = 0;
+  int _poseFramesProcessed = 0;
+  int _validFrames = 0;
+  int _rejectedFrames = 0;
+  double? _lastPoseInferenceMs;
 
   // Backend synchronization is throttled so the camera UI remains smooth.
   final MotionMindApiService _apiService = MotionMindApiService();
@@ -67,6 +72,11 @@ class _PracticePageState extends State<PracticePage>
   String _backendStatus = 'Waiting for pose';
   ApiPerformanceResult? _backendPerformance;
   ApiBiomechanicsResult? _backendBiomechanics;
+  ApiCoachResponse? _coachResponse;
+  bool _coachRequestInFlight = false;
+  String? _lastCoachFindingsKey;
+  double? _lastBackendLatencyMs;
+  int? _backendResultTimestampUs;
   final SquatTemporalTracker _temporalTracker = SquatTemporalTracker();
   SquatTemporalResult _temporalResult = const SquatTemporalResult.initial();
   late ExerciseTemporalTracker _exerciseTemporalTracker;
@@ -90,6 +100,7 @@ class _PracticePageState extends State<PracticePage>
     _currentBiomechanicsProfile = _exercise.profile;
     _exerciseTemporalTracker = ExerciseTemporalTracker(_exercise);
     _exerciseTemporalResult = ExerciseTemporalResult.initial(_exercise.name);
+    unawaited(_checkBackendHealth());
     _initializeCamera();
     _startSession();
   }
@@ -266,6 +277,7 @@ class _PracticePageState extends State<PracticePage>
   }
 
   void _submitPoseFrame(CameraImage image) {
+    _cameraFramesSeen++;
     if (!mounted ||
         _isPaused ||
         _isReplayModeEnabled ||
@@ -275,7 +287,10 @@ class _PracticePageState extends State<PracticePage>
     }
 
     _isPoseFrameProcessing = true;
-    _nextPoseFrameAt = DateTime.now().add(const Duration(milliseconds: 250));
+    // The native bridge uses one bounded executor and this flag provides
+    // backpressure. Eight-ish samples per second are enough for the local
+    // angle state machine while avoiding an unbounded queue of camera images.
+    _nextPoseFrameAt = DateTime.now().add(const Duration(milliseconds: 120));
     final camera = _cameras[_selectedCameraIndex];
     unawaited(_processPoseFrame(image, camera));
   }
@@ -284,6 +299,7 @@ class _PracticePageState extends State<PracticePage>
     CameraImage image,
     CameraDescription camera,
   ) async {
+    final stopwatch = Stopwatch()..start();
     try {
       final response = await _visionChannel.invokeMapMethod<String, dynamic>(
         'processCameraFrame',
@@ -314,6 +330,8 @@ class _PracticePageState extends State<PracticePage>
         },
       );
       if (response != null && mounted) {
+        _poseFramesProcessed++;
+        _lastPoseInferenceMs = stopwatch.elapsedMicroseconds / 1000.0;
         _updateTrackingPayload(HumanTrackingPayload.fromJson(response));
       } else if (mounted) {
         _resetTemporalAfterInterruption(
@@ -348,6 +366,12 @@ class _PracticePageState extends State<PracticePage>
     final exerciseResult = _isSquatProfile
         ? null
         : _exerciseTemporalTracker.process(payload);
+    final temporalStatus = squatResult?.status ?? exerciseResult?.status;
+    if (temporalStatus == BiomechanicsEvaluationStatus.valid) {
+      _validFrames++;
+    } else {
+      _rejectedFrames++;
+    }
     _sessionVerifiedFindings.addAll(
       squatResult?.verifiedFindings ??
           exerciseResult?.verifiedFindings ??
@@ -360,11 +384,16 @@ class _PracticePageState extends State<PracticePage>
       if (exerciseResult != null) _exerciseTemporalResult = exerciseResult;
       _onDeviceQualityScore = payload.onDeviceQualityScore;
       _onDevicePoseError = null;
-      // Do not carry a previous frame's quality result into the next frame;
-      // every displayed backend result must correspond to current telemetry.
-      _backendPerformance = null;
-      _backendBiomechanics = null;
-      _practiceScore = null;
+      // Keep the last accepted backend sample while the next request is in
+      // flight. Clearing it on every camera frame made a normal 8 FPS stream
+      // erase the response before it could be rendered. Invalid local frames
+      // still clear it, so a previous score is never shown during loss.
+      if (temporalStatus != BiomechanicsEvaluationStatus.valid) {
+        _backendPerformance = null;
+        _backendBiomechanics = null;
+        _practiceScore = null;
+        _backendResultTimestampUs = null;
+      }
       if (_backendStatus == 'On-device pose unavailable') {
         _backendStatus = 'Waiting for backend';
       }
@@ -393,6 +422,7 @@ class _PracticePageState extends State<PracticePage>
   }
 
   Future<void> _analyzeFrameOnBackend(HumanTrackingPayload payload) async {
+    final stopwatch = Stopwatch()..start();
     try {
       final vision = await _apiService.analyzeVision(
         userId: _userId,
@@ -426,7 +456,12 @@ class _PracticePageState extends State<PracticePage>
           ? null
           : performance;
 
-      if (mounted && payload.timestampUs == _latestPayloadTimestampUs) {
+      final latestTimestamp = _latestPayloadTimestampUs;
+      final responseIsRecent =
+          latestTimestamp != null &&
+          payload.timestampUs <= latestTimestamp &&
+          latestTimestamp - payload.timestampUs <= 2000000;
+      if (mounted && responseIsRecent) {
         final temporalSummary = temporal == null
             ? ''
             : ' • ${temporal.phaseLabel ?? temporal.phase} • ${temporal.repetitionCount} reps';
@@ -437,18 +472,93 @@ class _PracticePageState extends State<PracticePage>
           _backendStatus =
               'Online • ${vision.status} • ${vision.detectedJointsCount} landmarks'
               '$temporalSummary';
+          _lastBackendLatencyMs = stopwatch.elapsedMicroseconds / 1000.0;
+          _backendResultTimestampUs = payload.timestampUs;
         });
+        if (gatedPerformance != null) {
+          unawaited(_requestVerifiedCoach(gatedPerformance, biomechanics));
+        }
       }
     } catch (error) {
       // The local camera and biomechanics HUD remain usable when the backend
       // is stopped or the phone is temporarily offline.
       _nextBackendAttempt = DateTime.now().add(const Duration(seconds: 5));
       if (mounted && payload.timestampUs == _latestPayloadTimestampUs) {
-        setState(() => _backendStatus = 'Offline • local analysis');
+        final detail = error is MotionMindApiException
+            ? error.message
+            : error.toString();
+        setState(() {
+          _lastBackendLatencyMs = stopwatch.elapsedMicroseconds / 1000.0;
+          _backendStatus = 'Request failed • ${_shortStatus(detail)}';
+        });
       }
       debugPrint('MotionMind backend unavailable: $error');
     } finally {
       _backendRequestInFlight = false;
+    }
+  }
+
+  Future<void> _checkBackendHealth() async {
+    if (!mounted) return;
+    setState(() => _backendStatus = 'Connecting...');
+    try {
+      final health = await _apiService.health();
+      if (!mounted) return;
+      setState(() {
+        _backendStatus = health.healthy
+            ? 'Online • health check'
+            : 'Request failed • unhealthy';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      final detail = error is MotionMindApiException
+          ? error.message
+          : error.toString();
+      setState(() => _backendStatus = 'Offline • ${_shortStatus(detail)}');
+      debugPrint('MotionMind backend health check failed: $error');
+    }
+  }
+
+  String _shortStatus(String value) {
+    final normalized = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return normalized.length <= 54
+        ? normalized
+        : '${normalized.substring(0, 51)}...';
+  }
+
+  Future<void> _requestVerifiedCoach(
+    ApiPerformanceResult performance,
+    ApiBiomechanicsResult biomechanics,
+  ) async {
+    if (!performance.feedbackEligible || performance.verifiedFindings.isEmpty) {
+      return;
+    }
+    final key = '${_exercise.id}:${performance.verifiedFindings.join('|')}';
+    if (_coachRequestInFlight || key == _lastCoachFindingsKey) return;
+    _coachRequestInFlight = true;
+    _lastCoachFindingsKey = key;
+    try {
+      final response = await _apiService.generateCoachFeedback(
+        detectedMistakes: performance.detectedMistakes,
+        analysisStatus: performance.status,
+        skillId: _exercise.id,
+        qualityScore: performance.qualityScore,
+        phase: _activePhaseLabel,
+        confidenceStatus: biomechanics.dataQualityStatus,
+        verifiedFindings: performance.verifiedFindings,
+        verifiedMeasurements: {
+          'left_knee_angle': biomechanics.leftKneeAngle,
+          'right_knee_angle': biomechanics.rightKneeAngle,
+          'torso_inclination': biomechanics.torsoInclination,
+        },
+      );
+      if (mounted) setState(() => _coachResponse = response);
+    } catch (error) {
+      // Deterministic findings remain visible locally. No fabricated AI reply
+      // is shown when the optional coaching service is unavailable.
+      debugPrint('Verified coach request failed: $error');
+    } finally {
+      _coachRequestInFlight = false;
     }
   }
 
@@ -495,6 +605,7 @@ class _PracticePageState extends State<PracticePage>
       _backendPerformance = null;
       _backendBiomechanics = null;
       _practiceScore = null;
+      _backendResultTimestampUs = null;
       _backendStatus = 'Tracking lost';
     });
   }
@@ -600,12 +711,14 @@ class _PracticePageState extends State<PracticePage>
     final finalScore = qualityScore?.round();
 
     try {
-      await _apiService.generateCoachFeedback(
+      final coach = await _apiService.generateCoachFeedback(
         detectedMistakes: mistakes,
         practiceScore: _backendPerformance?.xp,
         analysisStatus: _backendPerformance?.status,
-        skillId: _currentBiomechanicsProfile.skillId,
+        skillId: _exercise.id,
         qualityScore: qualityScore,
+        phase: _activePhaseLabel,
+        confidenceStatus: _backendBiomechanics?.dataQualityStatus,
         verifiedFindings: verifiedFindings,
         verifiedMeasurements: {
           'left_elbow_angle': _backendBiomechanics?.leftElbowAngle,
@@ -630,7 +743,13 @@ class _PracticePageState extends State<PracticePage>
         exerciseId: _exercise.id,
         category: _exercise.categoryLabel,
         trackingQuality: _backendBiomechanics?.measurementConfidence,
+        validFrames: _validFrames,
+        rejectedFrames: _rejectedFrames,
+        processingLatencyMs: _lastPoseInferenceMs,
+        confidenceReasons:
+            _backendBiomechanics?.unavailableMeasurements ?? const [],
         verifiedFindings: verifiedFindings,
+        cameraFacing: _currentTrackingPayload.cameraFacing,
         subjectView: _exercise.supportedView,
       );
       await _apiService.storeSession(session);
@@ -644,6 +763,7 @@ class _PracticePageState extends State<PracticePage>
 
       if (mounted) {
         setState(() {
+          _coachResponse = coach;
           _backendStatus = 'Saved to backend';
         });
       }
@@ -653,6 +773,21 @@ class _PracticePageState extends State<PracticePage>
       }
       debugPrint('Could not persist MotionMind session: $error');
     }
+  }
+
+  String get _activeInstruction {
+    if (_activeTemporalStatus == BiomechanicsEvaluationStatus.valid &&
+        _coachResponse?.feedbackText.isNotEmpty == true) {
+      return _coachResponse!.feedbackText;
+    }
+    return _activeTemporalMessage;
+  }
+
+  String get _backendSampleAgeLabel {
+    final latest = _latestPayloadTimestampUs;
+    final sampled = _backendResultTimestampUs;
+    if (latest == null || sampled == null || latest < sampled) return '—';
+    return '${((latest - sampled) / 1000).round()} ms old';
   }
 
   Widget _buildStatSummary(String label, String val) {
@@ -951,6 +1086,9 @@ class _PracticePageState extends State<PracticePage>
                     children: [
                       Text(
                         'Backend: $_backendStatus',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
                         style: TextStyle(
                           color:
                               _backendStatus.startsWith('Online') ||
@@ -961,6 +1099,16 @@ class _PracticePageState extends State<PracticePage>
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      if (_lastBackendLatencyMs != null)
+                        Text(
+                          'API ${_lastBackendLatencyMs!.toStringAsFixed(0)} ms • pose ${_lastPoseInferenceMs?.toStringAsFixed(0) ?? '—'} ms • stream ${_poseFramesProcessed}/${_cameraFramesSeen} • sample ${_backendSampleAgeLabel}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 9,
+                          ),
+                        ),
                       if (_onDeviceQualityScore != null)
                         Text(
                           'On-device signal (not technique score): ${_onDeviceQualityScore!.toStringAsFixed(1)}/100',
@@ -999,7 +1147,7 @@ class _PracticePageState extends State<PracticePage>
                   currentPhase: currentPhase,
                   phaseLabel: automaticPhaseLabel,
                   automaticPhase: true,
-                  instructionOverride: _activeTemporalMessage,
+                  instructionOverride: _activeInstruction,
                   evaluation: evalFrame,
                   onNextPhase: () {},
                   onPrevPhase: () {},
@@ -1133,12 +1281,18 @@ class _PracticePageState extends State<PracticePage>
             children: [
               Icon(icon, color: AppColors.primaryBlue, size: 14),
               const SizedBox(width: 4),
-              Text(
-                val,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    val,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -1146,6 +1300,8 @@ class _PracticePageState extends State<PracticePage>
           const SizedBox(height: 2),
           Text(
             subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
           ),
         ],

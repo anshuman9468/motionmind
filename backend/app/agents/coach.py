@@ -1,9 +1,18 @@
 import os
+import json
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
-import google.generativeai as genai
 from app.schemas import CoachResponse, EvaluationStatus
+
+try:
+    # google-generativeai is deprecated. The maintained google-genai package
+    # exposes the client through ``google.genai``.
+    from google import genai
+    from google.genai import types as genai_types
+except ImportError:  # pragma: no cover - optional dependency in offline runs
+    genai = None
+    genai_types = None
 
 router = APIRouter(prefix="/coach", tags=["Coach"])
 
@@ -13,6 +22,8 @@ class CoachRequest(BaseModel):
     analysis_status: Optional[EvaluationStatus] = None
     skill_id: Optional[str] = None
     quality_score: Optional[float] = None
+    phase: Optional[str] = None
+    confidence_status: Optional[EvaluationStatus] = None
     verified_findings: List[str] = Field(default_factory=list)
     verified_measurements: Dict[str, float] = Field(default_factory=dict)
 
@@ -38,6 +49,7 @@ async def generate_coach_feedback(req: CoachRequest):
         f"{', '.join(req.verified_findings or req.detected_mistakes) if (req.verified_findings or req.detected_mistakes) else 'No verified findings.'}. "
         f"Verified measurements (use only as context): {req.verified_measurements}. "
         f"The measured heuristic quality score is {req.quality_score}. "
+        f"The observed phase is {req.phase or 'not available'} and the confidence status is {req.confidence_status or 'not available'}. "
         "Do not invent angles, measurements, injuries, or diagnoses. "
         "Construct a response in JSON format matching this structure:\n"
         "{\n"
@@ -48,25 +60,30 @@ async def generate_coach_feedback(req: CoachRequest):
         "Keep the responses concise and vocal-friendly."
     )
 
-    if api_key:
+    if api_key and genai is not None:
         try:
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            response = model.generate_content(
-                prompt,
-                generation_config={"response_mime_type": "application/json"}
+            client = genai.Client(api_key=api_key)
+            config = (
+                genai_types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                )
+                if genai_types is not None
+                else {"response_mime_type": "application/json"}
             )
-            # Parse response
-            import json
-            data = json.loads(response.text.strip())
+            response = client.models.generate_content(
+                model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
+                contents=prompt,
+                config=config,
+            )
+            data = json.loads((getattr(response, "text", "") or "").strip())
             return CoachResponse(
                 feedback_text=data.get("feedback_text", "Form corrections requested."),
                 audio_cues=data.get("audio_cues", ["Adjust alignment"]),
                 motivation=data.get("motivation", "Awake the strength of Olympus!")
             )
-        except Exception as e:
+        except Exception:
             # Fallback on Gemini errors
-            debug_err = str(e)
+            pass
     
     # Elegant simulated fallback generator (if API key is missing or calls fail)
     if not req.detected_mistakes and not req.verified_findings:
