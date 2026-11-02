@@ -13,6 +13,7 @@ import 'models/exercise_registry.dart';
 import 'services/biomechanics_engine.dart';
 import 'services/temporal_squat_tracker.dart';
 import 'services/temporal_exercise_tracker.dart';
+import 'services/tracking_stability_filter.dart';
 import 'widgets/human_detection_overlay.dart';
 import 'widgets/ar_biomechanics_painter.dart';
 import 'widgets/biomechanical_hud_panel.dart';
@@ -80,6 +81,10 @@ class _PracticePageState extends State<PracticePage>
   SquatTemporalResult _temporalResult = const SquatTemporalResult.initial();
   late ExerciseTemporalTracker _exerciseTemporalTracker;
   late ExerciseTemporalResult _exerciseTemporalResult;
+  final TrackingStabilityFilter _trackingStabilityFilter =
+      TrackingStabilityFilter();
+  TrackingStabilityResult _trackingStability =
+      TrackingStabilityResult.initial();
   int? _latestPayloadTimestampUs;
   final Set<String> _sessionVerifiedFindings = <String>{};
   final VoiceCoachService _voiceCoach = VoiceCoachService();
@@ -362,17 +367,20 @@ class _PracticePageState extends State<PracticePage>
 
   void _updateTrackingPayload(HumanTrackingPayload payload) {
     if (!mounted) return;
-    final squatResult = _isSquatProfile
+    final stability = _trackingStabilityFilter.update(payload);
+    final squatResult = _isSquatProfile && stability.shouldProcess
         ? _temporalTracker.process(payload)
         : null;
-    final exerciseResult = _isSquatProfile
-        ? null
-        : _exerciseTemporalTracker.process(payload);
+    final exerciseResult = !_isSquatProfile && stability.shouldProcess
+        ? _exerciseTemporalTracker.process(payload)
+        : null;
     final temporalStatus = squatResult?.status ?? exerciseResult?.status;
-    if (temporalStatus == BiomechanicsEvaluationStatus.valid) {
-      _validFrames++;
-    } else {
-      _rejectedFrames++;
+    if (temporalStatus != null) {
+      if (temporalStatus == BiomechanicsEvaluationStatus.valid) {
+        _validFrames++;
+      } else {
+        _rejectedFrames++;
+      }
     }
     _sessionVerifiedFindings.addAll(
       squatResult?.verifiedFindings ??
@@ -380,7 +388,8 @@ class _PracticePageState extends State<PracticePage>
           const [],
     );
     setState(() {
-      _currentTrackingPayload = payload;
+      _trackingStability = stability;
+      _currentTrackingPayload = stability.displayPayload;
       _latestPayloadTimestampUs = payload.timestampUs;
       if (squatResult != null) _temporalResult = squatResult;
       if (exerciseResult != null) _exerciseTemporalResult = exerciseResult;
@@ -389,7 +398,8 @@ class _PracticePageState extends State<PracticePage>
       // flight. Clearing it on every camera frame made a normal 8 FPS stream
       // erase the response before it could be rendered. Invalid local frames
       // still clear it, so a previous score is never shown during loss.
-      if (temporalStatus != BiomechanicsEvaluationStatus.valid) {
+      if (temporalStatus != null &&
+          temporalStatus != BiomechanicsEvaluationStatus.valid) {
         _backendPerformance = null;
         _backendBiomechanics = null;
         _practiceScore = null;
@@ -398,15 +408,25 @@ class _PracticePageState extends State<PracticePage>
         _backendStatus = 'Waiting for backend';
       }
     });
-    _scheduleBackendAnalysis(payload);
-    unawaited(_announceVoiceTracking(payload, squatResult, exerciseResult));
+    if (stability.shouldProcess && stability.rawReliable) {
+      _scheduleBackendAnalysis(payload);
+    }
+    unawaited(
+      _announceVoiceTracking(payload, squatResult, exerciseResult, stability),
+    );
   }
 
   Future<void> _announceVoiceTracking(
     HumanTrackingPayload payload,
     SquatTemporalResult? squatResult,
     ExerciseTemporalResult? exerciseResult,
+    TrackingStabilityResult stability,
   ) async {
+    if (stability.gracePeriod || (!stability.locked && stability.rawReliable)) {
+      // A candidate pose is still being confirmed; do not tell the user to
+      // move into frame while the detector is settling.
+      return;
+    }
     final detected =
         payload.humanDetected &&
         payload.trackingState == HumanDetectionState.humanLocked;
@@ -414,7 +434,7 @@ class _PracticePageState extends State<PracticePage>
     final evaluationValid = resultStatus == BiomechanicsEvaluationStatus.valid;
     await _voiceCoach.handleTrackingUpdate(
       exerciseId: _exercise.id,
-      trackingReady: detected && evaluationValid,
+      trackingReady: stability.locked && detected && evaluationValid,
       evaluationValid: evaluationValid,
       phase: squatResult?.phase.label ?? exerciseResult?.phaseLabel ?? '',
       repetitions:
@@ -621,6 +641,7 @@ class _PracticePageState extends State<PracticePage>
 
   void _resetTemporalAfterInterruption(String message) {
     if (!mounted) return;
+    _trackingStabilityFilter.reset();
     final temporalResult = _temporalTracker.resetAfterInterruption(
       message: message,
     );
@@ -628,6 +649,7 @@ class _PracticePageState extends State<PracticePage>
       message,
     );
     setState(() {
+      _trackingStability = TrackingStabilityResult.initial();
       _currentTrackingPayload = HumanTrackingPayload.empty();
       _latestPayloadTimestampUs = null;
       _temporalResult = temporalResult;
@@ -1338,12 +1360,15 @@ class _PracticePageState extends State<PracticePage>
 
   Widget _buildTrackingIndicator() {
     final detected =
+        _trackingStability.locked &&
         _currentTrackingPayload.humanDetected &&
         _currentTrackingPayload.trackingState ==
             HumanDetectionState.humanLocked;
     final evaluationReady =
         detected && _activeTemporalStatus == BiomechanicsEvaluationStatus.valid;
-    final indicatorColor = !detected
+    final indicatorColor = _trackingStability.gracePeriod
+        ? AppColors.amberWarning
+        : !detected
         ? AppColors.roseError
         : (evaluationReady ? AppColors.emeraldGreen : AppColors.amberWarning);
     return Container(
@@ -1365,7 +1390,9 @@ class _PracticePageState extends State<PracticePage>
           ),
           const SizedBox(width: 6),
           Text(
-            !detected
+            _trackingStability.gracePeriod
+                ? 'Tracking stabilizing'
+                : !detected
                 ? 'Move into frame'
                 : (evaluationReady
                       ? 'Tracking • $_activePhaseLabel'
