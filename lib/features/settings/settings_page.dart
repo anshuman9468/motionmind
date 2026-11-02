@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_container.dart';
-import '../../core/widgets/glass_text_field.dart';
 import '../../core/widgets/gradient_button.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -17,9 +16,6 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _hapticFeedback = true;
 
   void _showApiKeyDialog() {
-    final keyController = TextEditingController(
-      text: '',
-    );
     showDialog(
       context: context,
       builder: (context) {
@@ -30,24 +26,16 @@ class _SettingsPageState extends State<SettingsPage> {
             side: const BorderSide(color: AppColors.glassBorder),
           ),
           title: const Text(
-            'Coach connection',
+            'Gemini health companion',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GlassTextField(
-                hintText: 'OpenAI / Anthropic API Key',
-                controller: keyController,
-                prefixIcon: Icons.key_rounded,
-                obscureText: true,
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Optional provider keys stay on this device. Leave this blank to use rule-based feedback.',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-              ),
-            ],
+          content: const Text(
+            'For security, the Gemini key is configured on the FastAPI backend, not stored in the app. Set GEMINI_API_KEY in the backend terminal and restart the server. The key is never bundled into the APK.',
+            style: TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 12,
+              height: 1.45,
+            ),
           ),
           actions: [
             TextButton(
@@ -58,15 +46,9 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
             GradientButton(
-              text: 'Save Key',
+              text: 'Got it',
               onPressed: () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('API Key securely saved.'),
-                    backgroundColor: AppColors.emeraldGreen,
-                  ),
-                );
               },
             ),
           ],
@@ -129,7 +111,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         color: AppColors.cyanGlow,
                       ),
                       title: const Text(
-                        'Optional coach connection',
+                        'Gemini health companion',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 14,
@@ -137,7 +119,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
                       subtitle: const Text(
-                        'Add a provider key only if you want hosted coach explanations',
+                        'Configure GEMINI_API_KEY on the backend to enable health chat',
                         style: TextStyle(
                           color: AppColors.textMuted,
                           fontSize: 12,

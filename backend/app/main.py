@@ -10,6 +10,7 @@ from app.agents import (
     digital_twin,
     memory,
     temporal,
+    health_chat,
 )
 
 app = FastAPI(
@@ -37,6 +38,7 @@ app.include_router(recommendation.router, prefix="/agents")
 app.include_router(digital_twin.router, prefix="/agents")
 app.include_router(memory.router, prefix="/agents")
 app.include_router(temporal.router, prefix="/agents")
+app.include_router(health_chat.router, prefix="/agents")
 
 @app.get("/")
 def read_root():
@@ -53,6 +55,7 @@ def read_root():
             "Digital Twin Agent",
             "Memory Agent",
             "Temporal Movement Agent",
+            "Health Companion",
         ]
     }
 

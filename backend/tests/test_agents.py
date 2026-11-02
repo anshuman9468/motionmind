@@ -3,6 +3,7 @@ import math
 from fastapi.testclient import TestClient
 
 from app.agents.biomechanics import calculate_angle
+from app.agents import health_chat
 from app.main import app
 from app.schemas import CoordinateSpace, LandmarkPoint
 
@@ -76,7 +77,59 @@ def test_root():
     response = client.get("/")
     assert response.status_code == 200
     assert response.json()["status"] == "Healthy"
-    assert len(response.json()["active_agents"]) == 9
+    assert len(response.json()["active_agents"]) == 10
+
+
+def test_health_chat_is_truthful_when_gemini_is_not_configured(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    response = client.post(
+        "/agents/health-chat",
+        json={"message": "How can I recover after a hard workout?"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "offline"
+    assert "GEMINI_API_KEY" in data["reply"]
+    assert "diagnosis" in data["safety_note"]
+
+
+def test_health_chat_does_not_call_gemini_when_key_is_missing(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    monkeypatch.setattr(health_chat, "genai", None)
+    response = client.post(
+        "/agents/health-chat",
+        json={
+            "message": "I feel tired after training.",
+            "history": [{"role": "user", "content": "I trained today."}],
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["provider"] == "offline"
+
+
+def test_health_chat_uses_gemini_when_configured_without_exposing_the_key(monkeypatch):
+    captured = {}
+    monkeypatch.setenv("GEMINI_API_KEY", "test-secret")
+
+    def fake_generate(prompt, api_key):
+        captured["prompt"] = prompt
+        captured["api_key"] = api_key
+        return "Try a gentle cool-down and rest if you feel unusually tired."
+
+    monkeypatch.setattr(health_chat, "_generate_with_gemini", fake_generate)
+    response = client.post(
+        "/agents/health-chat",
+        json={"message": "How should I recover after training?"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "gemini"
+    assert "cool-down" in data["reply"]
+    assert captured["api_key"] == "test-secret"
+    assert "diagnose" in captured["prompt"].lower()
+    assert "test-secret" not in data["reply"]
 
 
 def test_temporal_endpoint_counts_a_valid_squat_and_exposes_phase():

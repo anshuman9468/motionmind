@@ -183,6 +183,22 @@ class MotionMindApiService {
     return ApiCoachResponse.fromJson(data);
   }
 
+  /// Sends a short wellness conversation to the optional Gemini health
+  /// companion. The API key remains on the backend; it is never sent by the
+  /// mobile app.
+  Future<ApiHealthChatResponse> sendHealthChat({
+    required String message,
+    List<Map<String, String>> history = const [],
+    String? context,
+  }) async {
+    final data = await _post('/agents/health-chat', {
+      'message': message,
+      if (history.isNotEmpty) 'history': history,
+      if (context != null && context.trim().isNotEmpty) 'context': context,
+    });
+    return ApiHealthChatResponse.fromJson(data);
+  }
+
   Future<ApiRecommendationResult> getRecommendations({
     required List<String> detectedWeaknesses,
     required String experienceLevel,
@@ -727,6 +743,30 @@ class ApiCoachResponse {
   final String feedbackText;
   final List<String> audioCues;
   final String motivation;
+}
+
+class ApiHealthChatResponse {
+  const ApiHealthChatResponse({
+    required this.reply,
+    required this.provider,
+    required this.safetyNote,
+  });
+
+  factory ApiHealthChatResponse.fromJson(Map<String, dynamic> json) {
+    return ApiHealthChatResponse(
+      reply:
+          json['reply']?.toString() ??
+          'I could not prepare a health response right now.',
+      provider: json['provider']?.toString() ?? 'offline',
+      safetyNote:
+          json['safety_note']?.toString() ??
+          'General wellness information only — not a diagnosis.',
+    );
+  }
+
+  final String reply;
+  final String provider;
+  final String safetyNote;
 }
 
 class ApiRecommendationResult {

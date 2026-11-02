@@ -70,4 +70,40 @@ void main() {
       expect(body.containsKey('left_knee_angle'), isFalse);
     },
   );
+
+  test(
+    'health chat sends conversation history and parses Gemini response',
+    () async {
+      late Map<String, dynamic> body;
+      final client = MockClient((request) async {
+        body = jsonDecode(request.body) as Map<String, dynamic>;
+        return http.Response(
+          jsonEncode({
+            'reply': 'Try a gentle cool-down and drink some water.',
+            'provider': 'gemini',
+            'safety_note':
+                'General wellness information only — not a diagnosis.',
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+      final service = MotionMindApiService(
+        client: client,
+        baseUrl: 'http://test',
+      );
+
+      final response = await service.sendHealthChat(
+        message: 'How should I recover after training?',
+        history: const [
+          {'role': 'assistant', 'content': 'How did your session feel?'},
+        ],
+      );
+
+      expect(body['message'], 'How should I recover after training?');
+      expect(body['history'], isA<List<dynamic>>());
+      expect(response.provider, 'gemini');
+      expect(response.reply, contains('cool-down'));
+    },
+  );
 }

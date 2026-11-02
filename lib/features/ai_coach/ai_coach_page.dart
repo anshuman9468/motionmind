@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_container.dart';
 import '../../core/widgets/glass_text_field.dart';
-import '../../core/widgets/preview_badge.dart';
 import '../providers/app_providers.dart';
 
 class AiCoachPage extends ConsumerStatefulWidget {
@@ -18,6 +17,7 @@ class AiCoachPage extends ConsumerStatefulWidget {
 class _AiCoachPageState extends ConsumerState<AiCoachPage> {
   final TextEditingController _msgController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  bool _isSending = false;
 
   @override
   void dispose() {
@@ -26,11 +26,23 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
     super.dispose();
   }
 
-  void _send() {
+  Future<void> _send() async {
     final text = _msgController.text.trim();
-    if (text.isEmpty) return;
-    ref.read(aiCoachChatProvider.notifier).sendMessage(text);
+    if (text.isEmpty || _isSending) return;
+    setState(() => _isSending = true);
+    final replyFuture = ref
+        .read(aiCoachChatProvider.notifier)
+        .sendMessage(text);
     _msgController.clear();
+    _scrollToBottom();
+    await replyFuture;
+    if (mounted) {
+      setState(() => _isSending = false);
+      _scrollToBottom();
+    }
+  }
+
+  void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -72,7 +84,7 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'MotionMind Coach',
+                          'MotionMind Health Companion',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
@@ -81,7 +93,7 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
                         ),
                         SizedBox(height: 3),
                         Text(
-                          'Guidance for your next move.',
+                          'A relatable companion for your wellbeing.',
                           style: TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 12,
@@ -91,7 +103,28 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  const PreviewBadge(label: 'DEMO COACH'),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBlue.withValues(alpha: .14),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: AppColors.primaryBlue.withValues(alpha: .5),
+                      ),
+                    ),
+                    child: const Text(
+                      'HEALTH CHAT',
+                      style: TextStyle(
+                        color: AppColors.cyanGlow,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: .6,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -111,7 +144,7 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
                     const SizedBox(width: 10),
                     const Expanded(
                       child: Text(
-                        'Demo guidance is shown here until a verified practice session is available. Real coaching will use your measured movement findings.',
+                        'General wellness guidance only — not a diagnosis. For severe or sudden symptoms, seek urgent medical care.',
                         style: TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 12,
@@ -169,7 +202,7 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
                 children: [
                   Expanded(
                     child: GlassTextField(
-                      hintText: 'Ask about your movement practice',
+                      hintText: 'Ask about your health or training',
                       controller: _msgController,
                       prefixIcon: Icons.edit_outlined,
                     ),
@@ -179,14 +212,23 @@ class _AiCoachPageState extends ConsumerState<AiCoachPage> {
                     button: true,
                     label: 'Send message',
                     child: GlassContainer(
-                      onTap: _send,
+                      onTap: _isSending ? null : () => _send(),
                       padding: const EdgeInsets.all(15),
                       borderRadius: AppColors.radiusMedium,
                       backgroundColor: AppColors.primaryBlue,
-                      child: const Icon(
-                        Icons.arrow_upward_rounded,
-                        color: AppColors.textOnAccent,
-                      ),
+                      child: _isSending
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.textOnAccent,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.arrow_upward_rounded,
+                              color: AppColors.textOnAccent,
+                            ),
                     ),
                   ),
                 ],

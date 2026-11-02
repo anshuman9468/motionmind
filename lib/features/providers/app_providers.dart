@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/database_service.dart';
+import '../../core/services/motionmind_api_service.dart';
 import '../models/user_model.dart';
 import '../models/skill_model.dart';
 import '../models/chat_message.dart';
@@ -392,47 +393,86 @@ final aiCoachChatProvider =
     });
 
 class AiCoachChatNotifier extends StateNotifier<List<ChatMessage>> {
-  AiCoachChatNotifier()
-    : super([
+  AiCoachChatNotifier({MotionMindApiService? apiService})
+    : _apiService = apiService ?? MotionMindApiService(),
+      super([
         ChatMessage(
           id: 'm1',
           sender: 'ai',
           content:
-              'Complete a practice session and I will help you understand the movement findings that MotionMind can verify. What would you like to work on?',
+              'Hi, I’m your MotionMind Health Companion. I can talk through general wellness, recovery, sleep, and training habits. I’m not a doctor, and I won’t diagnose symptoms. What’s on your mind?',
           timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
           suggestedActions: [
-            'How should I set up my camera?',
-            'How can I improve my squat?',
-            'What can MotionMind measure?',
+            'How can I recover after training?',
+            'What should I do before a workout?',
+            'How can I improve my sleep?',
           ],
         ),
       ]);
 
-  void sendMessage(String text) {
-    final userMsg = ChatMessage(
+  final MotionMindApiService _apiService;
+
+  Future<void> sendMessage(String text) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+
+    final allHistory = state
+        .where((message) => message.sender == 'user' || message.sender == 'ai')
+        .map(
+          (message) => {
+            'role': message.sender == 'user' ? 'user' : 'assistant',
+            'content': message.content,
+          },
+        )
+        .toList(growable: false);
+    final previousHistory = allHistory.length > 20
+        ? allHistory.sublist(allHistory.length - 20)
+        : allHistory;
+    final userMessage = ChatMessage(
       id: DateTime.now().toString(),
       sender: 'user',
-      content: text,
+      content: trimmed,
       timestamp: DateTime.now(),
     );
+    state = [...state, userMessage];
 
-    state = [...state, userMsg];
-
-    Future.delayed(const Duration(milliseconds: 1200), () {
-      final aiReply = ChatMessage(
-        id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
-        sender: 'ai',
-        content:
-            'I can help with "$text". Start a MotionMind practice session so any technique guidance can be grounded in movement data from your camera.',
-          timestamp: DateTime.now(),
-          suggestedActions: [
-            'Start a practice session',
-            'Show camera setup tips',
-            'Ask another question',
-        ],
+    try {
+      final response = await _apiService.sendHealthChat(
+        message: trimmed,
+        history: previousHistory,
       );
-      state = [...state, aiReply];
-    });
+      state = [
+        ...state,
+        ChatMessage(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          sender: 'ai',
+          content: response.reply,
+          timestamp: DateTime.now(),
+        ),
+      ];
+    } on MotionMindApiException catch (error) {
+      state = [
+        ...state,
+        ChatMessage(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          sender: 'ai',
+          content:
+              'I can’t reach the health companion right now. ${error.message} If your symptoms are severe or sudden, seek urgent medical care.',
+          timestamp: DateTime.now(),
+        ),
+      ];
+    } catch (_) {
+      state = [
+        ...state,
+        ChatMessage(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          sender: 'ai',
+          content:
+              'I could not prepare a safe reply right now. Please try again later, and seek urgent medical care for severe or sudden symptoms.',
+          timestamp: DateTime.now(),
+        ),
+      ];
+    }
   }
 }
 

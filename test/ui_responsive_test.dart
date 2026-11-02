@@ -13,6 +13,7 @@ import 'package:skillverse_ai/features/achievements/achievements_page.dart';
 import 'package:skillverse_ai/features/profile/profile_page.dart';
 import 'package:skillverse_ai/features/leaderboard/leaderboard_page.dart';
 import 'package:skillverse_ai/features/community/community_page.dart';
+import 'package:skillverse_ai/features/ai_coach/ai_coach_page.dart';
 
 void main() {
   Future<void> pumpAtSize(WidgetTester tester, Widget child, Size size) async {
@@ -94,6 +95,7 @@ void main() {
       const ProfilePage(),
       const LeaderboardPage(),
       const CommunityPage(),
+      const AiCoachPage(),
     ];
 
     for (final page in pages) {

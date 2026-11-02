@@ -134,10 +134,21 @@ cd backend
 python3 -m venv .venv
 source .venv/bin/activate       # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+# Optional: enable the Gemini-powered health companion. Keep the key local.
+export GEMINI_API_KEY='your_google_gemini_key'
 PYTHONPATH=. uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 The service is available at `http://127.0.0.1:8000`.
+
+The **MotionMind Health Companion** is a separate, safety-aware chat route for
+general wellness, recovery, sleep, nutrition, and training questions. The
+Gemini key stays on FastAPI and is never bundled into the APK. Without a key,
+the app truthfully shows that the companion is offline instead of generating a
+fake answer. It does not diagnose conditions or replace medical care.
+
+For a reusable local template, copy `backend/.env.example` and export the
+values in the terminal before starting Uvicorn. Do not commit a real key.
 
 ### 3. Run the Flutter app
 
@@ -245,6 +256,7 @@ running.
 | `/agents/temporal/analyze` | `POST` | Generic non-squat phase/cycle analysis from measured angles |
 | `/agents/temporal/analyze/{user_id}/{session_id}` | `DELETE` | Reset non-squat temporal state |
 | `/agents/coach` | `POST` | Coaching feedback |
+| `/agents/health-chat` | `POST` | Gemini-backed general wellness conversation |
 | `/agents/recommendation` | `POST` | Training recommendations |
 | `/agents/planner` | `POST` | Skill roadmap generation |
 | `/agents/twin/{user_id}` | `GET` | Read a digital-twin profile |
