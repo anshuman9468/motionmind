@@ -100,6 +100,30 @@ class MainNavigationShell extends StatelessWidget {
         route: '/dashboard',
       ),
       _NavItem(
+        icon: Icons.groups_3_outlined,
+        activeIcon: Icons.groups_3_rounded,
+        label: 'Community',
+        route: '/community',
+      ),
+      _NavItem(
+        icon: Icons.emoji_events_outlined,
+        activeIcon: Icons.emoji_events_rounded,
+        label: 'Leaderboard',
+        route: '/leaderboard',
+      ),
+      _NavItem(
+        icon: Icons.workspace_premium_outlined,
+        activeIcon: Icons.workspace_premium_rounded,
+        label: 'Achievements',
+        route: '/achievements',
+      ),
+      _NavItem(
+        icon: Icons.insights_outlined,
+        activeIcon: Icons.insights_rounded,
+        label: 'Movement insights',
+        route: '/digital-twin',
+      ),
+      _NavItem(
         icon: Icons.tune_rounded,
         activeIcon: Icons.tune_rounded,
         label: 'Settings',
