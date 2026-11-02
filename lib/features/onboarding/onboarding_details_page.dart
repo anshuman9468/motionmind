@@ -189,12 +189,19 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
                   else
                     const SizedBox(),
 
-                  GradientButton(
-                    text: _currentStep == 3 ? 'Finish setup' : 'Continue',
-                    icon: _currentStep == 3
-                        ? Icons.auto_awesome_rounded
-                        : Icons.arrow_forward_ios_rounded,
-                    onPressed: _nextStep,
+                  // A Row gives non-flex children unbounded horizontal
+                  // constraints. Keep the action constrained so the button
+                  // cannot fail layout (which previously left this screen
+                  // blank on a real device).
+                  Flexible(
+                    child: GradientButton(
+                      width: double.infinity,
+                      text: _currentStep == 3 ? 'Finish setup' : 'Continue',
+                      icon: _currentStep == 3
+                          ? Icons.auto_awesome_rounded
+                          : Icons.arrow_forward_ios_rounded,
+                      onPressed: _nextStep,
+                    ),
                   ),
                 ],
               ),

@@ -6,13 +6,10 @@ import 'package:skillverse_ai/core/theme/app_theme.dart';
 import 'package:skillverse_ai/features/home/home_page.dart';
 import 'package:skillverse_ai/features/marketplace/marketplace_page.dart';
 import 'package:skillverse_ai/features/practice/exercise_selection_page.dart';
+import 'package:skillverse_ai/features/onboarding/onboarding_details_page.dart';
 
 void main() {
-  Future<void> pumpAtSize(
-    WidgetTester tester,
-    Widget child,
-    Size size,
-  ) async {
+  Future<void> pumpAtSize(WidgetTester tester, Widget child, Size size) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(() {
@@ -21,10 +18,7 @@ void main() {
     });
     await tester.pumpWidget(
       ProviderScope(
-        child: MaterialApp(
-          theme: AppTheme.darkTheme,
-          home: child,
-        ),
+        child: MaterialApp(theme: AppTheme.darkTheme, home: child),
       ),
     );
     await tester.pumpAndSettle();
@@ -38,8 +32,9 @@ void main() {
     }
   });
 
-  testWidgets('practice catalogue fits without layout exceptions',
-      (tester) async {
+  testWidgets('practice catalogue fits without layout exceptions', (
+    tester,
+  ) async {
     for (final size in [const Size(360, 800), const Size(412, 915)]) {
       await pumpAtSize(tester, const ExerciseSelectionPage(), size);
       expect(tester.takeException(), isNull);
@@ -51,5 +46,35 @@ void main() {
     await pumpAtSize(tester, const MarketplacePage(), const Size(360, 800));
     expect(tester.takeException(), isNull);
     expect(find.text('Explore'), findsOneWidget);
+  });
+
+  testWidgets('onboarding details renders its first step on a phone', (
+    tester,
+  ) async {
+    await pumpAtSize(
+      tester,
+      const OnboardingDetailsPage(),
+      const Size(393, 852),
+    );
+    expect(tester.takeException(), isNull);
+    expect(find.text('Telemetry setup'), findsOneWidget);
+    expect(find.text('Continue'), findsOneWidget);
+
+    // Exercise every setup page so a later page cannot reintroduce a blank
+    // screen or a phone-size layout exception.
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(find.text('Physical Telemetry'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(find.text('Skills & Ecosystem'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(find.text('Habits & Levels'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
