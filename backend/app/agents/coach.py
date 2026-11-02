@@ -71,7 +71,7 @@ async def generate_coach_feedback(req: CoachRequest):
                 else {"response_mime_type": "application/json"}
             )
             response = client.models.generate_content(
-                model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
+                model=os.getenv("GEMINI_MODEL", "gemini-3.6-flash"),
                 contents=prompt,
                 config=config,
             )

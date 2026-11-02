@@ -6,6 +6,7 @@ conditions, interpret unverified camera output, or replace a clinician.
 """
 
 import asyncio
+import logging
 import os
 from typing import List, Literal, Optional
 
@@ -19,6 +20,7 @@ except ImportError:  # pragma: no cover - optional in offline test runs
 
 
 router = APIRouter(prefix="/health-chat", tags=["Health companion"])
+logger = logging.getLogger(__name__)
 
 
 class HealthChatTurn(BaseModel):
@@ -84,7 +86,7 @@ def _generate_with_gemini(prompt: str, api_key: str) -> str:
         raise RuntimeError("The google-genai package is not installed.")
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
-        model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
+        model=os.getenv("GEMINI_MODEL", "gemini-3.6-flash"),
         contents=prompt,
     )
     text = (getattr(response, "text", "") or "").strip()
@@ -114,8 +116,13 @@ async def chat_about_health(request: HealthChatRequest) -> HealthChatResponse:
             provider="gemini",
             safety_note=SAFETY_NOTE,
         )
-    except Exception:
+    except Exception as error:
         # Never fabricate a health answer when the provider is unavailable.
+        # Log only the exception type; never expose the API key or prompt.
+        logger.warning(
+            "Gemini health chat request failed (%s). Returning offline fallback.",
+            type(error).__name__,
+        )
         return HealthChatResponse(
             reply=(
                 "I couldn't reach the health companion right now. Please try "
