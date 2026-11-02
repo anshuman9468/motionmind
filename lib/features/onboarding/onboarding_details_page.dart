@@ -3,9 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/widgets/glass_container.dart';
-import '../../core/widgets/glass_text_field.dart';
-import '../../core/widgets/gradient_button.dart';
 import '../providers/app_providers.dart';
 
 class OnboardingDetailsPage extends ConsumerStatefulWidget {
@@ -204,13 +201,30 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
                   // cannot fail layout (which previously left this screen
                   // blank on a real device).
                   Flexible(
-                    child: GradientButton(
+                    child: SizedBox(
                       width: double.infinity,
-                      text: _currentStep == 3 ? 'Finish setup' : 'Continue',
-                      icon: _currentStep == 3
-                          ? Icons.auto_awesome_rounded
-                          : Icons.arrow_forward_ios_rounded,
-                      onPressed: _nextStep,
+                      height: 54,
+                      child: FilledButton.icon(
+                        onPressed: _nextStep,
+                        icon: Icon(
+                          _currentStep == 3
+                              ? Icons.auto_awesome_rounded
+                              : Icons.arrow_forward_ios_rounded,
+                          size: 18,
+                        ),
+                        label: Text(
+                          _currentStep == 3 ? 'Finish setup' : 'Continue',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primaryPurple,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -235,6 +249,64 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
     }
   }
 
+  Widget _profileField({
+    required String hintText,
+    TextEditingController? controller,
+    IconData? prefixIcon,
+    ValueChanged<String>? onChanged,
+  }) {
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: AppColors.glassBorder),
+    );
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      style: const TextStyle(color: Colors.white, fontSize: 15),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: const TextStyle(color: AppColors.textMuted),
+        prefixIcon: prefixIcon == null
+            ? null
+            : Icon(prefixIcon, color: AppColors.textMuted, size: 20),
+        filled: true,
+        fillColor: AppColors.surface.withValues(alpha: 0.72),
+        border: border,
+        enabledBorder: border,
+        focusedBorder: border.copyWith(
+          borderSide: const BorderSide(color: AppColors.cyanGlow, width: 1.4),
+        ),
+      ),
+    );
+  }
+
+  Widget _selectionCard({
+    required Widget child,
+    required VoidCallback onTap,
+    EdgeInsetsGeometry padding = const EdgeInsets.all(16),
+    double? width,
+    Color? borderColor,
+    Color? backgroundColor,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          width: width,
+          padding: padding,
+          decoration: BoxDecoration(
+            color: backgroundColor ?? AppColors.surface.withValues(alpha: 0.72),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor ?? AppColors.glassBorder),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+
   Widget _buildStep1() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,7 +326,7 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
         ),
         const SizedBox(height: 24),
 
-        GlassTextField(
+        _profileField(
           hintText: 'Full Display Name',
           controller: _nameController,
           prefixIcon: Icons.person_outline_rounded,
@@ -303,7 +375,7 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
             return Expanded(
               child: Padding(
                 padding: const EdgeInsets.only(right: 8.0),
-                child: GlassContainer(
+                child: _selectionCard(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   borderColor: isSel
                       ? AppColors.cyanGlow
@@ -420,7 +492,7 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
             return Expanded(
               child: Padding(
                 padding: const EdgeInsets.only(right: 8.0),
-                child: GlassContainer(
+                child: _selectionCard(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   borderColor: isSel
                       ? AppColors.cyanGlow
@@ -470,7 +542,7 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        GlassTextField(
+        _profileField(
           hintText: 'e.g. build strength, improve technique…',
           prefixIcon: Icons.flag_rounded,
           onChanged: (val) => setState(() => _learningGoal = val),
@@ -574,7 +646,7 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
             final isSel = _experienceLevel == lv;
             return Padding(
               padding: const EdgeInsets.only(bottom: 10.0),
-              child: GlassContainer(
+              child: _selectionCard(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 borderColor: isSel ? AppColors.cyanGlow : AppColors.glassBorder,
@@ -606,7 +678,7 @@ class _OnboardingDetailsPageState extends ConsumerState<OnboardingDetailsPage> {
             return Expanded(
               child: Padding(
                 padding: const EdgeInsets.only(right: 8.0),
-                child: GlassContainer(
+                child: _selectionCard(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   borderColor: isSel
                       ? AppColors.cyanGlow
