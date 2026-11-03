@@ -9,12 +9,15 @@ import '../../features/practice/models/skill_biomechanics.dart';
 /// HTTP client for the MotionMind FastAPI backend.
 ///
 /// For a phone connected over USB, run `adb reverse tcp:8000 tcp:8000` and
-/// keep the default URL. For a phone on the same Wi-Fi network, pass a LAN
-/// URL with `--dart-define=MOTIONMIND_API_URL=http://<computer-ip>:8000`.
+/// build with `--dart-define=MOTIONMIND_API_URL=http://127.0.0.1:8000`.
+/// For wireless use, the default points at the development laptop's current
+/// LAN address; override it with `--dart-define` when that address changes.
 class MotionMindApiService {
   static const defaultBaseUrl = String.fromEnvironment(
     'MOTIONMIND_API_URL',
-    defaultValue: 'http://127.0.0.1:8000',
+    // The development laptop's current hotspot/LAN address. Override this
+    // for another network with --dart-define or use adb reverse over USB.
+    defaultValue: 'http://172.20.10.3:8000',
   );
 
   MotionMindApiService({
