@@ -130,6 +130,12 @@ class SquatTemporalTracker {
     this.standingReturnAngle = 160.0,
     this.minDirectionSpeed = 1.0,
     this.trackingLossGraceUs = 1000000,
+    this.directionDeadbandDegrees = 2.0,
+    this.minStandingSamples = 2,
+    this.minBottomSamples = 1,
+    this.minBottomDwellUs = 40000,
+    this.minRepDurationUs = 120000,
+    this.maxPlausibleAngularSpeed = 1200.0,
   }) : assert(maxBufferSize > 0),
        assert(smoothingWindow > 0 && smoothingWindow.isOdd);
 
@@ -143,6 +149,20 @@ class SquatTemporalTracker {
   final double minDirectionSpeed;
   final int trackingLossGraceUs;
 
+  /// Small measured angle changes are treated as stationary. This prevents
+  /// camera/landmark jitter from changing phase direction.
+  final double directionDeadbandDegrees;
+
+  /// Consecutive stable samples required before a phase transition is valid.
+  final int minStandingSamples;
+  final int minBottomSamples;
+  final int minBottomDwellUs;
+  final int minRepDurationUs;
+
+  /// A single-frame jump above this rate is treated as an outlier for phase
+  /// transitions. The measurement remains visible, but cannot create a rep.
+  final double maxPlausibleAngularSpeed;
+
   final List<TemporalPoseSnapshot> _frames = <TemporalPoseSnapshot>[];
   final List<double> _validAngles = <double>[];
   final List<double> _validHipAngles = <double>[];
@@ -155,6 +175,11 @@ class SquatTemporalTracker {
   int? _lossStartedUs;
   String _lastMessage = '';
   bool _incompleteCycle = false;
+  bool _incompleteFeedbackEmitted = false;
+  int _standingSamples = 0;
+  int _bottomSamples = 0;
+  int? _cycleStartedUs;
+  int? _bottomStartedUs;
 
   SquatPhase get phase => _phase;
   int get repetitionCount => _repetitionCount;
@@ -176,6 +201,11 @@ class SquatTemporalTracker {
     _lossStartedUs = null;
     _lastMessage = '';
     _incompleteCycle = false;
+    _incompleteFeedbackEmitted = false;
+    _standingSamples = 0;
+    _bottomSamples = 0;
+    _cycleStartedUs = null;
+    _bottomStartedUs = null;
   }
 
   /// Clear a camera/inference interruption without inventing a timestamped
@@ -300,7 +330,9 @@ class SquatTemporalTracker {
       required.add(point);
     }
     final confidence = _confidence(required);
-    if (confidence < minConfidence) {
+    if (!payload.trackingConfidence.isFinite ||
+        payload.trackingConfidence < minConfidence ||
+        confidence < minConfidence) {
       return _trackingLost(timestampUs, lowConfidence: true);
     }
 
@@ -391,11 +423,13 @@ class SquatTemporalTracker {
         hipDirection == 'STATIONARY' ||
         hipDirection == direction ||
         (hipSpeed != null && hipSpeed < minDirectionSpeed);
+    final speedSupported = speed == null || speed <= maxPlausibleAngularSpeed;
     final completed = _advance(
       smoothed,
       direction,
       speed,
-      movementSupported: movementSupported,
+      movementSupported: movementSupported && speedSupported,
+      timestampUs: timestampUs,
     );
     final symmetry = _limbSymmetry(leftKnee, rightKnee);
     final verifiedFindings = _verifiedFindings(torso, symmetry);
@@ -558,6 +592,11 @@ class SquatTemporalTracker {
     _lastSmoothedHipAngle = null;
     _lastValidTimestampUs = null;
     _incompleteCycle = false;
+    _incompleteFeedbackEmitted = false;
+    _standingSamples = 0;
+    _bottomSamples = 0;
+    _cycleStartedUs = null;
+    _bottomStartedUs = null;
     _lastMessage = '';
   }
 
@@ -566,6 +605,7 @@ class SquatTemporalTracker {
     String? direction,
     double? speed, {
     required bool movementSupported,
+    required int timestampUs,
   }) {
     final movingDown =
         movementSupported &&
@@ -576,32 +616,66 @@ class SquatTemporalTracker {
         direction == 'ASCENDING' &&
         (speed ?? 0.0) >= minDirectionSpeed;
     if (_phase == SquatPhase.completedRep) {
-      if (angle >= standingReturnAngle) _phase = SquatPhase.standing;
+      if (angle >= standingReturnAngle) {
+        _phase = SquatPhase.standing;
+        // The completed transition already proved a stable top position;
+        // require no artificial extra standing frames before the next rep.
+        _standingSamples = minStandingSamples;
+      }
       return false;
     }
     if (_phase == SquatPhase.standing) {
-      if (angle <= standingExitAngle && movingDown) {
+      final standingConfirmed = _standingSamples >= minStandingSamples;
+      if (angle <= standingExitAngle && movingDown && standingConfirmed) {
         _phase = SquatPhase.descending;
+        _cycleStartedUs = timestampUs;
+        _incompleteCycle = false;
+        _incompleteFeedbackEmitted = false;
+      }
+      if (angle >= standingReturnAngle) {
+        _standingSamples++;
+      } else if (angle < standingReturnAngle - directionDeadbandDegrees) {
+        _standingSamples = 0;
       }
       return false;
     }
     if (_phase == SquatPhase.descending) {
-      if (angle <= bottomAngle) {
-        _phase = SquatPhase.bottom;
-      } else if (angle >= standingReturnAngle && !movingDown) {
+      if (angle <= bottomAngle &&
+          movementSupported &&
+          (movingDown || direction == 'STATIONARY')) {
+        _bottomSamples++;
+        if (_bottomSamples >= minBottomSamples) {
+          _phase = SquatPhase.bottom;
+          _bottomStartedUs = timestampUs;
+        }
+      } else if (angle > bottomAngle + directionDeadbandDegrees) {
+        _bottomSamples = 0;
+      }
+      if (angle >= standingReturnAngle && !movingDown) {
         _phase = SquatPhase.standing;
         _incompleteCycle = true;
+        _incompleteFeedbackEmitted = false;
+        _cycleStartedUs = null;
       }
       return false;
     }
     if (_phase == SquatPhase.bottom) {
-      if (angle >= bottomExitAngle && movingUp) {
+      final bottomDwellSatisfied =
+          _bottomStartedUs == null ||
+          timestampUs - _bottomStartedUs! >= minBottomDwellUs;
+      if (angle >= bottomExitAngle && movingUp && bottomDwellSatisfied) {
         _phase = SquatPhase.ascending;
       }
       return false;
     }
     if (_phase == SquatPhase.ascending) {
-      if (angle >= standingReturnAngle) {
+      final repDurationSatisfied =
+          _cycleStartedUs == null ||
+          timestampUs - _cycleStartedUs! >= minRepDurationUs;
+      if (angle >= standingReturnAngle &&
+          movementSupported &&
+          (movingUp || direction == 'STATIONARY') &&
+          repDurationSatisfied) {
         _phase = SquatPhase.completedRep;
         _repetitionCount++;
         return true;
@@ -611,9 +685,9 @@ class SquatTemporalTracker {
     return false;
   }
 
-  static String _direction(double delta) {
-    if (delta < 0) return 'DESCENDING';
-    if (delta > 0) return 'ASCENDING';
+  String _direction(double delta) {
+    if (delta < -directionDeadbandDegrees) return 'DESCENDING';
+    if (delta > directionDeadbandDegrees) return 'ASCENDING';
     return 'STATIONARY';
   }
 
@@ -633,9 +707,9 @@ class SquatTemporalTracker {
           findings.add('DRIVE UP TO A STABLE STAND');
           break;
         case SquatPhase.standing:
-          if (_incompleteCycle) {
+          if (_incompleteCycle && !_incompleteFeedbackEmitted) {
             findings.add('DEPTH NOT REACHED; REPEAT WITH CONTROL');
-            _incompleteCycle = false;
+            _incompleteFeedbackEmitted = true;
           }
           break;
         case SquatPhase.completedRep:

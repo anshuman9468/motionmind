@@ -209,6 +209,10 @@ class _PracticePageState extends State<PracticePage>
       if (mounted) {
         setState(() => _isCameraInitialized = true);
       }
+      // Recreate the native VIDEO-mode landmarker for a new lens. This clears
+      // temporal state from the previous camera and prevents a front/rear
+      // switch from blending two coordinate streams.
+      await _initializeOnDeviceTracking();
       await _startPoseStream();
     } catch (e) {
       debugPrint('Error toggling camera: $e');

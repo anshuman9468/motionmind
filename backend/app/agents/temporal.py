@@ -153,6 +153,12 @@ class SquatTemporalTracker:
         standing_return_angle: float = 160.0,
         min_direction_speed: float = 1.0,
         tracking_loss_grace_us: int = 1_000_000,
+        direction_deadband_degrees: float = 2.0,
+        min_standing_samples: int = 2,
+        min_bottom_samples: int = 1,
+        min_bottom_dwell_us: int = 40_000,
+        min_rep_duration_us: int = 120_000,
+        max_plausible_angular_speed: float = 1_200.0,
     ) -> None:
         if max_buffer_size < 1:
             raise ValueError("max_buffer_size must be positive")
@@ -167,6 +173,12 @@ class SquatTemporalTracker:
         self.standing_return_angle = standing_return_angle
         self.min_direction_speed = min_direction_speed
         self.tracking_loss_grace_us = tracking_loss_grace_us
+        self.direction_deadband_degrees = direction_deadband_degrees
+        self.min_standing_samples = min_standing_samples
+        self.min_bottom_samples = min_bottom_samples
+        self.min_bottom_dwell_us = min_bottom_dwell_us
+        self.min_rep_duration_us = min_rep_duration_us
+        self.max_plausible_angular_speed = max_plausible_angular_speed
         self._frames: Deque[TemporalFrame] = deque(maxlen=max_buffer_size)
         self._valid_angles: Deque[float] = deque(maxlen=smoothing_window)
         self._valid_hip_angles: Deque[float] = deque(maxlen=smoothing_window)
@@ -180,6 +192,10 @@ class SquatTemporalTracker:
         self._bottom_started_us: Optional[int] = None
         self._last_feedback: List[str] = []
         self._incomplete_cycle = False
+        self._incomplete_feedback_emitted = False
+        self._standing_samples = 0
+        self._bottom_samples = 0
+        self._cycle_started_us: Optional[int] = None
 
     @property
     def phase(self) -> SquatPhase:
@@ -210,6 +226,10 @@ class SquatTemporalTracker:
         self._bottom_started_us = None
         self._last_feedback = []
         self._incomplete_cycle = False
+        self._incomplete_feedback_emitted = False
+        self._standing_samples = 0
+        self._bottom_samples = 0
+        self._cycle_started_us = None
 
     def process(self, frame: TemporalFrame) -> TemporalFrameResult:
         """Consume one sample and return the current temporal assessment."""
@@ -307,11 +327,12 @@ class SquatTemporalTracker:
             or (hip_speed is not None and hip_speed < self.min_direction_speed)
         )
 
+        speed_supported = speed is None or speed <= self.max_plausible_angular_speed
         completed_rep = self._advance_state(
             smoothed_angle=smoothed_angle,
             direction=direction,
             speed=speed,
-            movement_supported=movement_supported,
+            movement_supported=movement_supported and speed_supported,
             timestamp_us=frame.timestamp_us,
         )
         symmetry = self._symmetry(frame)
@@ -434,6 +455,10 @@ class SquatTemporalTracker:
         self._last_valid_timestamp_us = None
         self._bottom_started_us = None
         self._incomplete_cycle = False
+        self._incomplete_feedback_emitted = False
+        self._standing_samples = 0
+        self._bottom_samples = 0
+        self._cycle_started_us = None
         self._last_feedback = []
 
     def _advance_state(
@@ -461,30 +486,69 @@ class SquatTemporalTracker:
             # a stable reset and cannot increment the counter again.
             if smoothed_angle >= self.standing_return_angle:
                 self._phase = SquatPhase.STANDING
+                # The completed transition already proved a stable top
+                # position; do not require artificial extra standing frames
+                # before the next repetition can begin.
+                self._standing_samples = self.min_standing_samples
             return False
 
         if self._phase == SquatPhase.STANDING:
-            if smoothed_angle <= self.standing_exit_angle and moving_down:
+            standing_confirmed = self._standing_samples >= self.min_standing_samples
+            if (
+                smoothed_angle <= self.standing_exit_angle
+                and moving_down
+                and standing_confirmed
+            ):
                 self._phase = SquatPhase.DESCENDING
+                self._cycle_started_us = timestamp_us
+                self._incomplete_cycle = False
+                self._incomplete_feedback_emitted = False
+            if smoothed_angle >= self.standing_return_angle:
+                self._standing_samples += 1
+            elif smoothed_angle < self.standing_return_angle - self.direction_deadband_degrees:
+                self._standing_samples = 0
             return False
 
         if self._phase == SquatPhase.DESCENDING:
-            if smoothed_angle <= self.bottom_angle:
-                self._phase = SquatPhase.BOTTOM
-                self._bottom_started_us = timestamp_us
-            elif smoothed_angle >= self.standing_return_angle and not moving_down:
+            if (
+                smoothed_angle <= self.bottom_angle
+                and movement_supported
+                and (moving_down or direction == "STATIONARY")
+            ):
+                self._bottom_samples += 1
+                if self._bottom_samples >= self.min_bottom_samples:
+                    self._phase = SquatPhase.BOTTOM
+                    self._bottom_started_us = timestamp_us
+            elif smoothed_angle > self.bottom_angle + self.direction_deadband_degrees:
+                self._bottom_samples = 0
+            if smoothed_angle >= self.standing_return_angle and not moving_down:
                 # Partial squat: it never reached the configured depth.
                 self._phase = SquatPhase.STANDING
                 self._incomplete_cycle = True
+                self._incomplete_feedback_emitted = False
+                self._cycle_started_us = None
             return False
 
         if self._phase == SquatPhase.BOTTOM:
-            if smoothed_angle >= self.bottom_exit_angle and moving_up:
+            bottom_dwell_satisfied = (
+                self._bottom_started_us is None
+                or timestamp_us - self._bottom_started_us >= self.min_bottom_dwell_us
+            )
+            if smoothed_angle >= self.bottom_exit_angle and moving_up and bottom_dwell_satisfied:
                 self._phase = SquatPhase.ASCENDING
             return False
 
         if self._phase == SquatPhase.ASCENDING:
-            if smoothed_angle >= self.standing_return_angle:
+            rep_duration_satisfied = (
+                self._cycle_started_us is None
+                or timestamp_us - self._cycle_started_us >= self.min_rep_duration_us
+            )
+            if (
+                smoothed_angle >= self.standing_return_angle
+                and movement_supported
+                and (moving_up or direction == "STATIONARY")
+                and rep_duration_satisfied
+            ):
                 self._phase = SquatPhase.COMPLETED_REP
                 self._repetitions += 1
                 return True
@@ -494,11 +558,10 @@ class SquatTemporalTracker:
 
         return False
 
-    @staticmethod
-    def _direction(delta: float) -> str:
-        if delta < 0:
+    def _direction(self, delta: float) -> str:
+        if delta < -self.direction_deadband_degrees:
             return "DESCENDING"
-        if delta > 0:
+        if delta > self.direction_deadband_degrees:
             return "ASCENDING"
         return "STATIONARY"
 
@@ -518,9 +581,13 @@ class SquatTemporalTracker:
             findings.append("Hold the bottom briefly, then drive up.")
         elif self._phase == SquatPhase.ASCENDING:
             findings.append("Drive up and return to a stable standing position.")
-        elif self._phase == SquatPhase.STANDING and self._incomplete_cycle:
+        elif (
+            self._phase == SquatPhase.STANDING
+            and self._incomplete_cycle
+            and not self._incomplete_feedback_emitted
+        ):
             findings.append("Squat depth was not reached; repeat with a controlled descent.")
-            self._incomplete_cycle = False
+            self._incomplete_feedback_emitted = True
         if frame.torso_inclination is not None and frame.torso_inclination > 45.0:
             findings.append("Reduce observable torso lean.")
         if symmetry is not None and symmetry < 0.80:

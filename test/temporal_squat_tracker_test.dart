@@ -9,6 +9,7 @@ HumanTrackingPayload payload(
   int timestampUs,
   double kneeAngle, {
   double landmarkConfidence = 0.95,
+  double trackingConfidence = 0.95,
 }) {
   final radians = kneeAngle * math.pi / 180.0;
   final joints = <String, Joint3DPoint>{
@@ -64,7 +65,7 @@ HumanTrackingPayload payload(
   return HumanTrackingPayload(
     humanDetected: true,
     trackingState: HumanDetectionState.humanLocked,
-    trackingConfidence: 0.95,
+    trackingConfidence: trackingConfidence,
     multiplePeopleCount: 1,
     selectedPersonId: 'primary_user_1',
     joints: joints,
@@ -226,5 +227,28 @@ void main() {
     expect(result.status, BiomechanicsEvaluationStatus.lowConfidence);
     expect(result.completedRep, isFalse);
     expect(result.repetitionCount, 0);
+  });
+
+  test('local tracker rejects low aggregate tracking confidence', () {
+    final tracker = SquatTemporalTracker();
+    final result = tracker.process(
+      payload(100000, 170, trackingConfidence: 0.20),
+    );
+
+    expect(result.status, BiomechanicsEvaluationStatus.lowConfidence);
+    expect(result.repetitionCount, 0);
+    expect(result.completedRep, isFalse);
+  });
+
+  test('local tracker does not count an implausible one-frame angle jump', () {
+    final tracker = SquatTemporalTracker();
+    final angles = [170.0, 170.0, 160.0, 140.0, 5.0, 170.0, 170.0];
+    final results = [
+      for (var i = 0; i < angles.length; i++)
+        tracker.process(payload((i + 1) * 100000, angles[i])),
+    ];
+
+    expect(tracker.repetitionCount, 0);
+    expect(results.every((result) => !result.completedRep), isTrue);
   });
 }

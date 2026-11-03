@@ -205,6 +205,24 @@ def test_low_confidence_landmarks_abstain():
     assert result.repetition_count == 0
 
 
+def test_implausible_one_frame_angle_jump_cannot_create_a_repetition():
+    tracker = SquatTemporalTracker()
+    results = run(
+        tracker,
+        [
+            sample(100_000, 170),
+            sample(200_000, 170),
+            sample(300_000, 160),
+            sample(400_000, 140),
+            sample(500_000, 5),
+            sample(600_000, 170),
+            sample(700_000, 170),
+        ],
+    )
+    assert tracker.repetition_count == 0
+    assert not any(result.completed_rep for result in results)
+
+
 def test_temporary_tracking_loss_recovers_without_fabricating_a_frame():
     tracker = SquatTemporalTracker()
     run(tracker, complete_squat()[:8])

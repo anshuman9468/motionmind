@@ -57,6 +57,7 @@ class MainActivity : FlutterActivity() {
     private var poseLandmarker: PoseLandmarker? = null
     private var qualityInterpreter: Interpreter? = null
     private var previousHipCenter: Pair<Float, Float>? = null
+    private var lastInferenceTimestampMs: Long = 0L
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -90,7 +91,7 @@ class MainActivity : FlutterActivity() {
                             .setModelAssetPath(POSE_MODEL_ASSET)
                             .build(),
                     )
-                    .setRunningMode(RunningMode.IMAGE)
+                    .setRunningMode(RunningMode.VIDEO)
                     .setNumPoses(1)
                     .setMinPoseDetectionConfidence(0.55f)
                     .setMinPosePresenceConfidence(0.55f)
@@ -107,6 +108,7 @@ class MainActivity : FlutterActivity() {
                     null
                 }
                 previousHipCenter = null
+                lastInferenceTimestampMs = 0L
                 runOnUiThread { result.success(mapOf("ready" to true)) }
             } catch (error: Exception) {
                 runOnUiThread {
@@ -145,22 +147,42 @@ class MainActivity : FlutterActivity() {
         inferenceExecutor.execute {
             try {
                 val planes = readPlanes(rawPlanes)
-                val bitmap = rotateBitmap(yuv420ToBitmap(width, height, planes), rotationDegrees)
-                val poseResult = poseLandmarker!!.detect(BitmapImageBuilder(bitmap).build())
-                val payload = posePayload(
-                    poseResult.landmarks(),
-                    bitmap.width,
-                    bitmap.height,
-                    cameraFacing,
-                    mirrored,
-                    sessionId,
-                    skillId,
-                    skillName,
-                    subjectView,
-                    rotationDegrees,
-                    qualitySkillId,
-                )
-                runOnUiThread { result.success(payload) }
+                val sourceBitmap = yuv420ToBitmap(width, height, planes)
+                val bitmap = rotateBitmap(sourceBitmap, rotationDegrees)
+                if (bitmap !== sourceBitmap && !sourceBitmap.isRecycled) {
+                    sourceBitmap.recycle()
+                }
+                try {
+                    // VIDEO mode lets MediaPipe maintain its own temporal
+                    // tracker across accepted camera frames. The Dart layer
+                    // still performs the authoritative confidence gate and
+                    // repetition state machine; this only stabilizes
+                    // landmark extraction.
+                    val wallClockTimestampMs = SystemClock.elapsedRealtimeNanos() / 1_000_000L
+                    val inferenceTimestampMs = maxOf(wallClockTimestampMs, lastInferenceTimestampMs + 1L)
+                    lastInferenceTimestampMs = inferenceTimestampMs
+                    val poseResult = poseLandmarker!!.detectForVideo(
+                        BitmapImageBuilder(bitmap).build(),
+                        inferenceTimestampMs,
+                    )
+                    val payload = posePayload(
+                        poseResult.landmarks(),
+                        bitmap.width,
+                        bitmap.height,
+                        cameraFacing,
+                        mirrored,
+                        sessionId,
+                        skillId,
+                        skillName,
+                        subjectView,
+                        rotationDegrees,
+                        qualitySkillId,
+                        inferenceTimestampMs * 1_000L,
+                    )
+                    runOnUiThread { result.success(payload) }
+                } finally {
+                    if (!bitmap.isRecycled) bitmap.recycle()
+                }
             } catch (error: Exception) {
                 Log.e("SkillVerseAI", "Pose frame inference failed", error)
                 runOnUiThread { result.error("POSE_INFERENCE_FAILED", error.message, null) }
@@ -180,6 +202,7 @@ class MainActivity : FlutterActivity() {
         subjectView: String,
         rotationDegrees: Int,
         qualitySkillId: Int,
+        timestampUs: Long,
     ): Map<String, Any> {
         if (poses.isEmpty() || poses.first().size != 33) {
             return mutableMapOf<String, Any>(
@@ -199,7 +222,7 @@ class MainActivity : FlutterActivity() {
                 "mirrored" to mirrored,
                 "rotationDegrees" to rotationDegrees,
                 "skillId" to skillId,
-                "timestampUs" to (SystemClock.elapsedRealtimeNanos() / 1_000L),
+                "timestampUs" to timestampUs,
             ).apply {
                 if (sessionId != null) this["sessionId"] = sessionId
                 if (skillName != null) this["skillName"] = skillName
@@ -245,7 +268,7 @@ class MainActivity : FlutterActivity() {
             "mirrored" to mirrored,
             "rotationDegrees" to rotationDegrees,
             "skillId" to skillId,
-            "timestampUs" to (SystemClock.elapsedRealtimeNanos() / 1_000L),
+            "timestampUs" to timestampUs,
         )
         if (sessionId != null) payload["sessionId"] = sessionId
         if (skillName != null) payload["skillName"] = skillName
