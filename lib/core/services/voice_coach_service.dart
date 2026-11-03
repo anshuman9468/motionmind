@@ -49,8 +49,16 @@ class VoiceCoachService {
 
   Future<void> _configure() async {
     try {
-      await _textToSpeech.setLanguage('en-US');
-      await _textToSpeech.setSpeechRate(0.48);
+      // A calm, easy-to-follow pace works better during movement than the
+      // engine default, which can sound rushed on many Android devices. Some
+      // phones omit the Indian-English voice, so retain a safe English
+      // fallback instead of disabling coaching.
+      try {
+        await _textToSpeech.setLanguage('en-IN');
+      } catch (_) {
+        await _textToSpeech.setLanguage('en-US');
+      }
+      await _textToSpeech.setSpeechRate(0.44);
       await _textToSpeech.setPitch(1.0);
       await _textToSpeech.setVolume(1.0);
       await _textToSpeech.awaitSpeakCompletion(false);
@@ -92,8 +100,8 @@ class VoiceCoachService {
       if (_lastTrackingReady != false) {
         _lastTrackingReady = false;
         await speakCue(
-          'Move into frame so I can see your full body.',
-          cooldown: const Duration(seconds: 6),
+          'I lost your full body for a moment. Step back a little so I can keep coaching you.',
+          cooldown: const Duration(seconds: 8),
         );
       }
       return;
@@ -104,8 +112,8 @@ class VoiceCoachService {
     if (resumed) {
       _lastPhase = phase;
       await speakCue(
-        'Tracking ready. Begin when you are ready.',
-        cooldown: const Duration(seconds: 2),
+        'I can see you clearly now. Start when you are ready.',
+        cooldown: const Duration(seconds: 4),
       );
       return;
     }
@@ -114,9 +122,9 @@ class VoiceCoachService {
       _lastAnnouncedRepetition = repetitions;
       await speakCue(
         repetitions > 0
-            ? 'Rep $repetitions complete. Nice work.'
-            : 'Nice work.',
-        cooldown: const Duration(milliseconds: 600),
+            ? 'Nice work. Rep $repetitions is complete. Reset when you are ready.'
+            : 'Nice work. Reset when you are ready.',
+        cooldown: const Duration(seconds: 2),
       );
       return;
     }
@@ -136,7 +144,7 @@ class VoiceCoachService {
       }
     }
 
-    final cleanInstruction = _cleanInstruction(instruction);
+    final cleanInstruction = VoiceCoachCue.friendlyFeedback(instruction);
     final now = DateTime.now();
     final feedbackRecentlySpoken =
         _lastFeedbackAt != null &&
@@ -146,7 +154,7 @@ class VoiceCoachService {
         cleanInstruction != null &&
         !feedbackRecentlySpoken) {
       _lastFeedbackAt = now;
-      await speakCue(cleanInstruction, cooldown: const Duration(seconds: 6));
+      await speakCue(cleanInstruction, cooldown: const Duration(seconds: 7));
     }
   }
 
@@ -215,21 +223,21 @@ class VoiceCoachCue {
       case 'squat':
         switch (phase) {
           case 'DESCENDING':
-            return 'Lower with control.';
+            return 'Nice and steady. Lower with control.';
           case 'BOTTOM':
-            return 'Hold the bottom, then drive up.';
+            return 'Good depth. Now drive up with control.';
           case 'ASCENDING':
-            return 'Drive up to a stable stand.';
+            return 'Great. Stand tall to finish the rep.';
           case 'STANDING':
-            return 'Set your stance.';
+            return 'Set your stance. You are ready for the next rep.';
         }
       case 'push_up':
       case 'tricep_push_up':
         switch (phase) {
           case 'LOWERING':
-            return 'Lower your body with control.';
+            return 'Lower smoothly and keep your body steady.';
           case 'BOTTOM':
-            return 'Keep your body line steady.';
+            return 'Good. Keep your body line steady.';
           case 'PRESSING':
             return 'Press smoothly back to the start.';
           case 'READY':
@@ -238,7 +246,7 @@ class VoiceCoachCue {
       case 'seated_chest_fly':
         switch (phase) {
           case 'OPENING':
-            return 'Open your arms with control.';
+            return 'Open your arms slowly and stay in control.';
           case 'OPEN':
             return 'Pause briefly, then close.';
           case 'CLOSING':
@@ -252,7 +260,7 @@ class VoiceCoachCue {
             return 'Reach under control.';
           case 'ROWING':
           case 'TOP':
-            return 'Pull your elbows back.';
+            return 'Pull your elbows back and keep your torso steady.';
           case 'RETURNING':
             return 'Lower with a steady torso.';
           case 'READY':
@@ -261,11 +269,11 @@ class VoiceCoachCue {
       case 'boxing_jab':
         switch (phase) {
           case 'PUNCH_INITIATION':
-            return 'Start the jab smoothly.';
+            return 'Start the jab smoothly. Keep your guard relaxed.';
           case 'EXTENSION':
             return 'Extend the punch under control.';
           case 'RECOVERY':
-            return 'Return your hands to guard.';
+            return 'Nice. Bring your hands back to guard.';
           case 'GUARD':
             return 'Keep a stable guard.';
         }
@@ -297,5 +305,39 @@ class VoiceCoachCue {
         }
     }
     return null;
+  }
+
+  /// Converts deterministic rule-engine messages into a single friendly,
+  /// actionable coaching cue. Unknown messages remain short but are never
+  /// presented as a diagnosis or a made-up measurement.
+  static String? friendlyFeedback(String? instruction) {
+    final cleaned = VoiceCoachService._cleanInstruction(instruction);
+    if (cleaned == null) return null;
+    final normalized = cleaned.toUpperCase();
+    if (normalized.contains('LOWER UNDER CONTROL')) {
+      return 'Nice and steady. Lower with control.';
+    }
+    if (normalized.contains('HOLD THE BOTTOM')) {
+      return 'Good depth. When you are ready, drive back up.';
+    }
+    if (normalized.contains('DRIVE UP TO A STABLE STAND')) {
+      return 'Good. Stand tall to finish the rep.';
+    }
+    if (normalized.contains('DEPTH NOT REACHED')) {
+      return 'Almost there. On the next rep, lower a little further if that feels comfortable.';
+    }
+    if (normalized.contains('TORSO LEAN')) {
+      return 'Try keeping your chest a little more lifted as you move.';
+    }
+    if (normalized.contains('KNEES TRACKING EVENLY')) {
+      return 'Keep both knees travelling evenly as you move.';
+    }
+    if (normalized.contains('TRACKING') || normalized.contains('STEP BACK')) {
+      return 'Step back slightly so I can see your full body.';
+    }
+    if (normalized.contains('COMPLETED')) {
+      return 'Nice work. That movement is complete.';
+    }
+    return cleaned;
   }
 }

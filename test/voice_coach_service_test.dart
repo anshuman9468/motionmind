@@ -27,7 +27,9 @@ void main() {
       repetitions: 0,
       completedRepetition: false,
     );
-    expect(fakeTts.spoken, ['Move into frame so I can see your full body.']);
+    expect(fakeTts.spoken, [
+      'I lost your full body for a moment. Step back a little so I can keep coaching you.',
+    ]);
 
     await service.handleTrackingUpdate(
       exerciseId: 'squat',
@@ -57,9 +59,9 @@ void main() {
     expect(
       fakeTts.spoken,
       containsAll(<String>[
-        'Tracking ready. Begin when you are ready.',
-        'Lower with control.',
-        'Rep 1 complete. Nice work.',
+        'I can see you clearly now. Start when you are ready.',
+        'Nice and steady. Lower with control.',
+        'Nice work. Rep 1 is complete. Reset when you are ready.',
       ]),
     );
   });
@@ -68,11 +70,11 @@ void main() {
     test('provides exercise-specific squat cues', () {
       expect(
         VoiceCoachCue.forPhase('squat', 'DESCENDING'),
-        'Lower with control.',
+        'Nice and steady. Lower with control.',
       );
       expect(
         VoiceCoachCue.forPhase('squat', 'BOTTOM'),
-        'Hold the bottom, then drive up.',
+        'Good depth. Now drive up with control.',
       );
     });
 
@@ -87,17 +89,30 @@ void main() {
       );
       expect(
         VoiceCoachCue.forPhase('seated_chest_fly', 'OPENING'),
-        'Open your arms with control.',
+        'Open your arms slowly and stay in control.',
       );
       expect(
         VoiceCoachCue.forPhase('bent_over_row', 'ROWING'),
-        'Pull your elbows back.',
+        'Pull your elbows back and keep your torso steady.',
       );
     });
 
     test('does not invent a cue for an unsupported phase', () {
       expect(VoiceCoachCue.forPhase('squat', 'UNKNOWN'), isNull);
       expect(VoiceCoachCue.forPhase('unknown_exercise', 'MOVING'), isNull);
+    });
+
+    test('turns verified rule messages into friendly coaching', () {
+      expect(
+        VoiceCoachCue.friendlyFeedback('REDUCE OBSERVABLE TORSO LEAN'),
+        'Try keeping your chest a little more lifted as you move.',
+      );
+      expect(
+        VoiceCoachCue.friendlyFeedback(
+          'DEPTH NOT REACHED; REPEAT WITH CONTROL',
+        ),
+        'Almost there. On the next rep, lower a little further if that feels comfortable.',
+      );
     });
   });
 }
