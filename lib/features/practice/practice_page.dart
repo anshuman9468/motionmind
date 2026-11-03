@@ -328,9 +328,10 @@ class _PracticePageState extends State<PracticePage>
           'skillId': _exercise.id,
           'skillName': _exercise.name,
           'subjectView': _exercise.supportedView,
-          // The optional TFLite model is a separate raw signal; it is not the
-          // deterministic technique score and is never used as XP.
-          'qualitySkillId': 0,
+          // The experimental TFLite quality model is intentionally disabled
+          // during coaching. It is not validated for technique scoring and
+          // would otherwise consume time needed for real pose tracking.
+          'runExperimentalQuality': false,
           'planes': image.planes
               .map(
                 (plane) => {

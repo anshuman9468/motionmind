@@ -140,8 +140,12 @@ class SquatTemporalTracker {
     this.minBottomDwellUs = 40000,
     this.minRepDurationUs = 120000,
     this.maxPlausibleAngularSpeed = 1200.0,
+    this.calibrationSamples = 2,
+    this.minimumStandingReferenceAngle = 140.0,
   }) : assert(maxBufferSize > 0),
-       assert(smoothingWindow > 0 && smoothingWindow.isOdd);
+       assert(smoothingWindow > 0 && smoothingWindow.isOdd),
+       assert(calibrationSamples > 0),
+       assert(minimumStandingReferenceAngle > 0);
 
   final int maxBufferSize;
   final int smoothingWindow;
@@ -167,6 +171,13 @@ class SquatTemporalTracker {
   /// transitions. The measurement remains visible, but cannot create a rep.
   final double maxPlausibleAngularSpeed;
 
+  /// Real camera perspective changes a measured image-space knee angle. The
+  /// tracker establishes a reference from actual stable standing frames, then
+  /// applies the configurable squat excursion thresholds relative to that
+  /// reference. It does not invent a body angle when pose tracking is lost.
+  final int calibrationSamples;
+  final double minimumStandingReferenceAngle;
+
   final List<TemporalPoseSnapshot> _frames = <TemporalPoseSnapshot>[];
   final List<double> _validAngles = <double>[];
   SquatPhase _phase = SquatPhase.standing;
@@ -182,6 +193,8 @@ class SquatTemporalTracker {
   int _bottomSamples = 0;
   int? _cycleStartedUs;
   int? _bottomStartedUs;
+  final List<double> _standingReferenceSamples = <double>[];
+  double? _standingReferenceAngle;
 
   SquatPhase get phase => _phase;
   int get repetitionCount => _repetitionCount;
@@ -206,6 +219,8 @@ class SquatTemporalTracker {
     _bottomSamples = 0;
     _cycleStartedUs = null;
     _bottomStartedUs = null;
+    _standingReferenceSamples.clear();
+    _standingReferenceAngle = null;
   }
 
   /// Clear a camera/inference interruption without inventing a timestamped
@@ -581,6 +596,41 @@ class SquatTemporalTracker {
     _cycleStartedUs = null;
     _bottomStartedUs = null;
     _lastMessage = '';
+    _standingReferenceSamples.clear();
+    _standingReferenceAngle = null;
+  }
+
+  double get _effectiveStandingExitAngle => _standingReferenceAngle == null
+      ? standingExitAngle
+      : _standingReferenceAngle! - 15.0;
+
+  double get _effectiveBottomAngle => _standingReferenceAngle == null
+      ? bottomAngle
+      // Require a meaningful measured excursion from the user's actual
+      // standing geometry, while retaining the existing conservative
+      // 120-degree starting target for typical side-view poses.
+      : math.min(bottomAngle, _standingReferenceAngle! - 40.0);
+
+  double get _effectiveBottomExitAngle =>
+      _effectiveBottomAngle + (bottomExitAngle - bottomAngle);
+
+  double get _effectiveStandingReturnAngle => _standingReferenceAngle == null
+      ? standingReturnAngle
+      : _standingReferenceAngle! - 7.0;
+
+  void _collectStandingReference(double angle) {
+    if (_standingReferenceAngle != null ||
+        angle < minimumStandingReferenceAngle ||
+        _phase != SquatPhase.standing) {
+      return;
+    }
+    _standingReferenceSamples.add(angle);
+    if (_standingReferenceSamples.length > calibrationSamples) {
+      _standingReferenceSamples.removeAt(0);
+    }
+    if (_standingReferenceSamples.length == calibrationSamples) {
+      _standingReferenceAngle = _median(_standingReferenceSamples);
+    }
   }
 
   bool _advance(
@@ -590,6 +640,11 @@ class SquatTemporalTracker {
     required bool movementSupported,
     required int timestampUs,
   }) {
+    _collectStandingReference(angle);
+    final standingExit = _effectiveStandingExitAngle;
+    final bottom = _effectiveBottomAngle;
+    final bottomExit = _effectiveBottomExitAngle;
+    final standingReturn = _effectiveStandingReturnAngle;
     final movingDown =
         movementSupported &&
         direction == 'DESCENDING' &&
@@ -599,7 +654,7 @@ class SquatTemporalTracker {
         direction == 'ASCENDING' &&
         (speed ?? 0.0) >= minDirectionSpeed;
     if (_phase == SquatPhase.completedRep) {
-      if (angle >= standingReturnAngle) {
+      if (angle >= standingReturn) {
         _phase = SquatPhase.standing;
         // The completed transition already proved a stable top position;
         // require no artificial extra standing frames before the next rep.
@@ -609,13 +664,13 @@ class SquatTemporalTracker {
     }
     if (_phase == SquatPhase.standing) {
       final standingConfirmed = _standingSamples >= minStandingSamples;
-      if (angle <= standingExitAngle && movingDown && standingConfirmed) {
+      if (angle <= standingExit && movingDown && standingConfirmed) {
         _phase = SquatPhase.descending;
         _cycleStartedUs = timestampUs;
         _incompleteCycle = false;
         _incompleteFeedbackEmitted = false;
       }
-      if (angle >= standingReturnAngle) {
+      if (angle >= standingReturn) {
         _standingSamples++;
       }
       // Preserve a confirmed standing baseline while a gradual descent starts.
@@ -624,7 +679,7 @@ class SquatTemporalTracker {
       return false;
     }
     if (_phase == SquatPhase.descending) {
-      if (angle <= bottomAngle &&
+      if (angle <= bottom &&
           movementSupported &&
           (movingDown || direction == 'STATIONARY')) {
         _bottomSamples++;
@@ -632,10 +687,10 @@ class SquatTemporalTracker {
           _phase = SquatPhase.bottom;
           _bottomStartedUs = timestampUs;
         }
-      } else if (angle > bottomAngle + directionDeadbandDegrees) {
+      } else if (angle > bottom + directionDeadbandDegrees) {
         _bottomSamples = 0;
       }
-      if (angle >= standingReturnAngle && !movingDown) {
+      if (angle >= standingReturn && !movingDown) {
         _phase = SquatPhase.standing;
         _incompleteCycle = true;
         _incompleteFeedbackEmitted = false;
@@ -647,7 +702,7 @@ class SquatTemporalTracker {
       final bottomDwellSatisfied =
           _bottomStartedUs == null ||
           timestampUs - _bottomStartedUs! >= minBottomDwellUs;
-      if (angle >= bottomExitAngle && movingUp && bottomDwellSatisfied) {
+      if (angle >= bottomExit && movingUp && bottomDwellSatisfied) {
         _phase = SquatPhase.ascending;
       }
       return false;
@@ -656,7 +711,7 @@ class SquatTemporalTracker {
       final repDurationSatisfied =
           _cycleStartedUs == null ||
           timestampUs - _cycleStartedUs! >= minRepDurationUs;
-      if (angle >= standingReturnAngle &&
+      if (angle >= standingReturn &&
           movementSupported &&
           (movingUp || direction == 'STATIONARY') &&
           repDurationSatisfied) {
@@ -664,7 +719,7 @@ class SquatTemporalTracker {
         _repetitionCount++;
         return true;
       }
-      if (angle <= bottomAngle && !movingUp) _phase = SquatPhase.bottom;
+      if (angle <= bottom && !movingUp) _phase = SquatPhase.bottom;
     }
     return false;
   }

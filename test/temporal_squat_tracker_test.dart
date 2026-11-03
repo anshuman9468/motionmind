@@ -330,6 +330,33 @@ void main() {
     expect(tracker.repetitionCount, 1);
   });
 
+  test(
+    'local tracker calibrates thresholds for a lower camera-perspective angle',
+    () {
+      final tracker = SquatTemporalTracker();
+      // The same movement can measure around 150 degrees at standing on a
+      // different camera placement. Relative calibration must still require a
+      // meaningful excursion and count exactly one complete repetition.
+      const angles = <double>[
+        150,
+        150,
+        145,
+        130,
+        110,
+        100,
+        110,
+        130,
+        145,
+        150,
+        150,
+      ];
+      for (var i = 0; i < angles.length; i++) {
+        tracker.process(payload((i + 1) * 100000, angles[i]));
+      }
+      expect(tracker.repetitionCount, 1);
+    },
+  );
+
   test('local tracker abstains when a required knee is missing', () {
     final tracker = SquatTemporalTracker();
     final missing = payload(100000, 120);

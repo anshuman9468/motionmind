@@ -99,14 +99,10 @@ class MainActivity : FlutterActivity() {
                     .build()
 
                 poseLandmarker = PoseLandmarker.createFromOptions(applicationContext, poseOptions)
-                qualityInterpreter = try {
-                    Interpreter(loadAssetBuffer(QUALITY_MODEL_ASSET))
-                } catch (qualityError: Exception) {
-                    // Pose tracking remains useful when the optional quality model
-                    // is unavailable or contains an unsupported operator.
-                    Log.w("SkillVerseAI", "Optional quality model unavailable", qualityError)
-                    null
-                }
+                // The optional experimental quality model is intentionally lazy.
+                // It is not an authoritative coaching signal, so loading or
+                // running it must never slow camera readiness or rep tracking.
+                qualityInterpreter = null
                 previousHipCenter = null
                 lastInferenceTimestampMs = 0L
                 runOnUiThread { result.success(mapOf("ready" to true)) }
@@ -128,6 +124,7 @@ class MainActivity : FlutterActivity() {
         val skillId = call.argument<String>("skillId") ?: "unknown"
         val skillName = call.argument<String>("skillName")
         val subjectView = call.argument<String>("subjectView") ?: "unknown"
+        val runExperimentalQuality = call.argument<Boolean>("runExperimentalQuality") ?: false
         val qualitySkillId = call.argument<Int>("qualitySkillId") ?: 0
         val rawPlanes = call.argument<List<*>>("planes")
 
@@ -176,6 +173,7 @@ class MainActivity : FlutterActivity() {
                         skillName,
                         subjectView,
                         rotationDegrees,
+                        runExperimentalQuality,
                         qualitySkillId,
                         inferenceTimestampMs * 1_000L,
                     )
@@ -201,6 +199,7 @@ class MainActivity : FlutterActivity() {
         skillName: String?,
         subjectView: String,
         rotationDegrees: Int,
+        runExperimentalQuality: Boolean,
         qualitySkillId: Int,
         timestampUs: Long,
     ): Map<String, Any> {
@@ -243,13 +242,19 @@ class MainActivity : FlutterActivity() {
         }
         val joints = jointIndexes.mapValues { (_, index) -> pointToJoint(points[index]) }.toMutableMap()
 
-        val qualityScore = qualityInterpreter?.let {
+        // Keep the experimental model opt-in and outside the time-critical pose
+        // loop. Its output is never a technique score or rep-counting signal.
+        val qualityScore = if (runExperimentalQuality) {
             try {
-                runQualityModel(points, qualitySkillId)
+                experimentalQualityInterpreter()?.let {
+                    runQualityModel(points, qualitySkillId)
+                }
             } catch (qualityError: Exception) {
                 Log.w("SkillVerseAI", "Optional quality inference failed", qualityError)
                 null
             }
+        } else {
+            null
         }
         val payload = mutableMapOf<String, Any>(
             "schemaVersion" to "1.0",
@@ -300,6 +305,16 @@ class MainActivity : FlutterActivity() {
         val rawScore = output[0]
         val normalizedScore = if (rawScore in 0f..1f) rawScore * 100f else rawScore
         return normalizedScore.coerceIn(0f, 100f)
+    }
+
+    private fun experimentalQualityInterpreter(): Interpreter? {
+        qualityInterpreter?.let { return it }
+        return try {
+            Interpreter(loadAssetBuffer(QUALITY_MODEL_ASSET)).also { qualityInterpreter = it }
+        } catch (qualityError: Exception) {
+            Log.w("SkillVerseAI", "Optional quality model unavailable", qualityError)
+            null
+        }
     }
 
     /**
