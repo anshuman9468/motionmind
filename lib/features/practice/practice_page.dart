@@ -301,7 +301,9 @@ class _PracticePageState extends State<PracticePage>
     // The native bridge uses one bounded executor and this flag provides
     // backpressure. Eight-ish samples per second are enough for the local
     // angle state machine while avoiding an unbounded queue of camera images.
-    _nextPoseFrameAt = DateTime.now().add(const Duration(milliseconds: 120));
+    // A 10 FPS cap keeps native inference bounded while making phase changes
+    // visibly responsive for slow, controlled repetitions.
+    _nextPoseFrameAt = DateTime.now().add(const Duration(milliseconds: 100));
     final camera = _cameras[_selectedCameraIndex];
     unawaited(_processPoseFrame(image, camera));
   }

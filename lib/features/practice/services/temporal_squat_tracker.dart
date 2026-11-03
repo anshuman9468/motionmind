@@ -128,9 +128,13 @@ class SquatTemporalTracker {
     this.bottomAngle = 120.0,
     this.bottomExitAngle = 130.0,
     this.standingReturnAngle = 160.0,
-    this.minDirectionSpeed = 1.0,
+    // At the camera's real-time sampling rate, a slow controlled squat can
+    // legitimately change by about one degree per accepted frame. Keep this
+    // low enough to recognise that movement; depth, confidence and phase
+    // hysteresis still prevent a stationary pose from creating a repetition.
+    this.minDirectionSpeed = 0.5,
     this.trackingLossGraceUs = 1000000,
-    this.directionDeadbandDegrees = 2.0,
+    this.directionDeadbandDegrees = 0.75,
     this.minStandingSamples = 2,
     this.minBottomSamples = 1,
     this.minBottomDwellUs = 40000,
@@ -165,13 +169,11 @@ class SquatTemporalTracker {
 
   final List<TemporalPoseSnapshot> _frames = <TemporalPoseSnapshot>[];
   final List<double> _validAngles = <double>[];
-  final List<double> _validHipAngles = <double>[];
   SquatPhase _phase = SquatPhase.standing;
   int _repetitionCount = 0;
   int? _lastTimestampUs;
   int? _lastValidTimestampUs;
   double? _lastSmoothedAngle;
-  double? _lastSmoothedHipAngle;
   int? _lossStartedUs;
   String _lastMessage = '';
   bool _incompleteCycle = false;
@@ -191,13 +193,11 @@ class SquatTemporalTracker {
     final repetitions = keepRepetitionCount ? _repetitionCount : 0;
     _frames.clear();
     _validAngles.clear();
-    _validHipAngles.clear();
     _phase = SquatPhase.standing;
     _repetitionCount = repetitions;
     _lastTimestampUs = null;
     _lastValidTimestampUs = null;
     _lastSmoothedAngle = null;
-    _lastSmoothedHipAngle = null;
     _lossStartedUs = null;
     _lastMessage = '';
     _incompleteCycle = false;
@@ -391,39 +391,24 @@ class SquatTemporalTracker {
     _validAngles.add(angle);
     if (_validAngles.length > smoothingWindow) _validAngles.removeAt(0);
     final smoothed = _median(_validAngles);
-    final hipAngle = (leftHip + rightHip) / 2.0;
-    _validHipAngles.add(hipAngle);
-    if (_validHipAngles.length > smoothingWindow) {
-      _validHipAngles.removeAt(0);
-    }
-    final smoothedHip = _median(_validHipAngles);
     double? speed;
     String? direction;
-    double? hipSpeed;
-    String? hipDirection;
     if (_lastSmoothedAngle != null && _lastValidTimestampUs != null) {
       final deltaSeconds = (timestampUs - _lastValidTimestampUs!) / 1000000.0;
       if (deltaSeconds > 0 && deltaSeconds.isFinite) {
         final delta = smoothed - _lastSmoothedAngle!;
         speed = (delta / deltaSeconds).abs();
         direction = _direction(delta);
-        if (_lastSmoothedHipAngle != null) {
-          final hipDelta = smoothedHip - _lastSmoothedHipAngle!;
-          hipSpeed = (hipDelta / deltaSeconds).abs();
-          hipDirection = _direction(hipDelta);
-        }
       }
     }
     _lastValidTimestampUs = timestampUs;
     _lastSmoothedAngle = smoothed;
-    _lastSmoothedHipAngle = smoothedHip;
-    final movementSupported =
-        direction == null ||
-        hipDirection == null ||
-        hipDirection == 'STATIONARY' ||
-        hipDirection == direction ||
-        (hipSpeed != null && hipSpeed < minDirectionSpeed);
     final speedSupported = speed == null || speed <= maxPlausibleAngularSpeed;
+    // Knee flexion/extension is the primary observable signal for this
+    // side-view squat state machine. Hip angle is still retained as a real
+    // measurement for feedback, but perspective noise must not veto a valid
+    // knee-driven repetition.
+    final movementSupported = speedSupported;
     final completed = _advance(
       smoothed,
       direction,
@@ -587,9 +572,7 @@ class SquatTemporalTracker {
   void _resetPhaseOnly() {
     _phase = SquatPhase.standing;
     _validAngles.clear();
-    _validHipAngles.clear();
     _lastSmoothedAngle = null;
-    _lastSmoothedHipAngle = null;
     _lastValidTimestampUs = null;
     _incompleteCycle = false;
     _incompleteFeedbackEmitted = false;
@@ -634,9 +617,10 @@ class SquatTemporalTracker {
       }
       if (angle >= standingReturnAngle) {
         _standingSamples++;
-      } else if (angle < standingReturnAngle - directionDeadbandDegrees) {
-        _standingSamples = 0;
       }
+      // Preserve a confirmed standing baseline while a gradual descent starts.
+      // Resetting it as soon as the knees bent made slow real squats unable
+      // to enter the DESCENDING state at all.
       return false;
     }
     if (_phase == SquatPhase.descending) {
@@ -686,8 +670,8 @@ class SquatTemporalTracker {
   }
 
   String _direction(double delta) {
-    if (delta < -directionDeadbandDegrees) return 'DESCENDING';
-    if (delta > directionDeadbandDegrees) return 'ASCENDING';
+    if (delta <= -directionDeadbandDegrees) return 'DESCENDING';
+    if (delta >= directionDeadbandDegrees) return 'ASCENDING';
     return 'STATIONARY';
   }
 
