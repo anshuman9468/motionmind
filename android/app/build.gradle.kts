@@ -32,6 +32,11 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // MediaPipe creates its task graph through native bindings. Keep
+            // this path intact until a dedicated release shrinking profile is
+            // verified on physical devices.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
@@ -39,6 +44,11 @@ android {
 dependencies {
     // Runs the real Pose Landmarker `.task` model on-device.
     implementation("com.google.mediapipe:tasks-vision:latest.release")
+    // tasks-core 1.2.0 resolves Flogger 0.6, whose caller discovery crashes
+    // during MediaPipe graph setup on this Android 16 OnePlus device. The
+    // maintained runtime is binary-compatible and fixes that platform issue.
+    implementation("com.google.flogger:flogger:0.9")
+    implementation("com.google.flogger:flogger-system-backend:0.9")
     // Runs MotionMind's small numeric quality model after pose extraction.
     implementation("org.tensorflow:tensorflow-lite:2.16.1")
 }
